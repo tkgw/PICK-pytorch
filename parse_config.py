@@ -124,7 +124,7 @@ class ConfigParser:
         return self.config[name]
 
     def update_config(self, key, value):
-        '''Set config value ike ordinary dict. '''
+        """Set config value ike ordinary dict. """
         self.config[key] = value
 
     def get_logger(self, name, verbosity=2):

@@ -24,7 +24,7 @@ class Trainer:
 
     def __init__(self, model, optimizer, config, data_loader,
                  valid_data_loader=None, lr_scheduler=None, max_len_step=None):
-        '''
+        """
 
         :param model:
         :param optimizer:
@@ -33,7 +33,7 @@ class Trainer:
         :param valid_data_loader:
         :param lr_scheduler:
         :param max_len_step:  controls number of batches(steps) in each epoch.
-        '''
+        """
         self.config = config
         self.distributed = config['distributed']
         if self.distributed:
@@ -161,13 +161,13 @@ class Trainer:
                 self._save_checkpoint(epoch, save_best=best)
 
     def _is_best_monitor_metric(self, best, not_improved_count, val_result_dict):
-        '''
+        """
         monitor metric
         :param best:
         :param not_improved_count:
         :param val_result_dict:
         :return:
-        '''
+        """
         entity_name, metric = self.monitor_metric.split('-')
         val_monitor_metric_res = val_result_dict[entity_name][metric]
         try:
@@ -188,11 +188,11 @@ class Trainer:
         return best, not_improved_count
 
     def _train_epoch(self, epoch):
-        '''
+        """
         Training logic for an epoch
         :param epoch: Integer, current training epoch.
         :return: A log dict that contains average loss and metric in this epoch.
-        '''
+        """
         self.model.train()
         self.train_loss_metrics.reset()
         ## step iteration start ##
@@ -289,11 +289,11 @@ class Trainer:
         return log
 
     def _valid_epoch(self, epoch):
-        '''
+        """
          Validate after training an epoch or regular step, this is a time-consuming procedure if validation data is big.
         :param epoch: Integer, current training epoch.
         :return: A dict that contains information about validation
-        '''
+        """
 
         self.model.eval()
         self.valid_f1_metrics.reset()
@@ -348,11 +348,11 @@ class Trainer:
         return f1_result_dict
 
     def average_gradients(self, model):
-        '''
+        """
         Gradient averaging
         :param model:
         :return:
-        '''
+        """
         size = float(dist.get_world_size())
         for param in model.parameters():
             dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
@@ -365,12 +365,12 @@ class Trainer:
         self.logger.warning(msg) if self.local_master else None
 
     def _prepare_device(self, local_rank, local_world_size):
-        '''
+        """
          setup GPU device if available, move model into configured device
         :param local_rank:
         :param local_world_size:
         :return:
-        '''
+        """
         if self.distributed:
             ngpu_per_process = torch.cuda.device_count() // local_world_size
             device_ids = list(range(local_rank * ngpu_per_process, (local_rank + 1) * ngpu_per_process))
@@ -411,12 +411,12 @@ class Trainer:
             return device, list_ids
 
     def _save_checkpoint(self, epoch, save_best=False):
-        '''
+        """
         Saving checkpoints
         :param epoch:  current epoch number
         :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
         :return:
-        '''
+        """
         # only local master process do save model
         if not self.local_master:
             return
@@ -445,11 +445,11 @@ class Trainer:
             self.logger_info("Saving checkpoint: {} ...".format(filename))
 
     def _resume_checkpoint(self, resume_path):
-        '''
+        """
         Resume from saved checkpoints
         :param resume_path: Checkpoint path to be resumed
         :return:
-        '''
+        """
         resume_path = str(resume_path)
         self.logger_info("Loading checkpoint: {} ...".format(resume_path))
         # map_location = {'cuda:%d' % 0: 'cuda:%d' % self.config['local_rank']}

@@ -76,9 +76,9 @@ def main(config: ConfigParser, local_master: bool, logger=None):
 
 
 def entry_point(config: ConfigParser):
-    '''
+    """
     entry-point function for a single worker, distributed training
-    '''
+    """
 
     local_world_size = config['local_world_size']
 
