@@ -2,8 +2,8 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 9:21 PM
 
-from typing import *
 import logging
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -23,8 +23,8 @@ class MLPLayer(nn.Module):
                  hidden_dims: Optional[List[int]] = None,
                  layer_norm: bool = False,
                  dropout: Optional[float] = 0.0,
-                 activation: Optional[str] = 'relu'):
-        '''
+                 activation: Optional[str] = 'relu') -> None:
+        """
         transform output of LSTM layer to logits, as input of crf layers
         :param in_dim:
         :param out_dim:
@@ -32,7 +32,7 @@ class MLPLayer(nn.Module):
         :param layer_norm:
         :param dropout:
         :param activation:
-        '''
+        """
         super().__init__()
         layers = []
         activation_layer = {
@@ -66,13 +66,13 @@ class MLPLayer(nn.Module):
 
 class BiLSTMLayer(nn.Module):
 
-    def __init__(self, lstm_kwargs, mlp_kwargs):
+    def __init__(self, lstm_kwargs, mlp_kwargs) -> None:
         super().__init__()
         self.lstm = nn.LSTM(**lstm_kwargs)
         self.mlp = MLPLayer(**mlp_kwargs)
 
     @staticmethod
-    def sort_tensor(x: torch.Tensor, length: torch.Tensor, h_0: torch.Tensor = None, c_0: torch.Tensor = None):
+    def sort_tensor(x: torch.Tensor, length: torch.Tensor, h_0: torch.Tensor = None, c_0: torch.Tensor = None) -> Tuple:
         sorted_lenght, sorted_order = torch.sort(length, descending=True)
         _, invert_order = sorted_order.sort(0, descending=False)
         if h_0 is not None:
@@ -82,19 +82,19 @@ class BiLSTMLayer(nn.Module):
         return x[sorted_order], sorted_lenght, invert_order, h_0, c_0
 
     def forward(self, x_seq: torch.Tensor,
-                lenghts: torch.Tensor,
-                initial: Tuple[torch.Tensor, torch.Tensor]):
-        '''
+                lengths: torch.Tensor,
+                initial: Tuple[torch.Tensor, torch.Tensor]) -> Tensor:
+        """
 
         :param x_seq: (B, N*T, D)
-        :param lenghts: (B,)
+        :param lengths: (B,)
         :param initial: (num_layers * directions, batch, D)
         :return: (B, N*T, out_dim)
-        '''
+        """
 
         # B*N, T, hidden_size
         x_seq, sorted_lengths, invert_order, h_0, c_0 = self.sort_tensor(x_seq, lenghts, initial[0], initial[0])
-        packed_x = nn.utils.rnn.pack_padded_sequence(x_seq, lengths=sorted_lengths, batch_first=True)
+        packed_x = nn.utils.rnn.pack_padded_sequence(x_seq, lengths=sorted_lengths.cpu(), batch_first=True)
         self.lstm.flatten_parameters()
         output, _ = self.lstm(packed_x)
         output, _ = nn.utils.rnn.pad_packed_sequence(output, batch_first=True,
@@ -108,11 +108,11 @@ class BiLSTMLayer(nn.Module):
 
 class UnionLayer(nn.Module):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags):
-        '''
+    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor) -> Tuple:
+        """
         For a document, we merge all non-paddding (valid) x and x_gcn value together in a document-level format,
         then feed it into crf layer.
         :param x: set of nodes, the output of encoder, (B, N, T, D)
@@ -125,7 +125,7 @@ class UnionLayer(nn.Module):
                 new_mask, (B, max_doc_seq_len)
                 doc_seq_len, (B,)
                 new_tag, (B, max_doc_seq_len)
-        '''
+        """
         B, N, T, D = x.shape
         x = x.reshape(B, N * T, -1)
         mask = mask.reshape(B, N * T)
@@ -183,14 +183,14 @@ class UnionLayer(nn.Module):
 
 class Decoder(nn.Module):
 
-    def __init__(self, bilstm_kwargs, mlp_kwargs, crf_kwargs):
+    def __init__(self, bilstm_kwargs: dict, mlp_kwargs: dict, crf_kwargs: dict) -> None:
         super().__init__()
         self.union_layer = UnionLayer()
         self.bilstm_layer = BiLSTMLayer(bilstm_kwargs, mlp_kwargs)
         self.crf_layer = ConditionalRandomField(**crf_kwargs)
 
-    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor):
-        '''
+    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor) -> Tuple:
+        """
 
         :param x: set of nodes, the output of encoder, (B, N, T, D)
         :param x_gcn: node embedding, the output of graph module, (B, N, D)
@@ -198,7 +198,7 @@ class Decoder(nn.Module):
         :param length: the length of every segments (boxes) of documents, (B, N)
         :param tags: IBO label for every segments of documents, (B, N, T)
         :return:
-        '''
+        """
         # new_x: (B, max_doc_seq_len, D), new_mask: (B, max_doc_seq_len),
         # doc_seq_len: (B, ), new_tag: (B, N*T)
         new_x, new_mask, doc_seq_len, new_tag = self.union_layer(x, x_gcn, mask, length, tags)

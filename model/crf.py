@@ -9,11 +9,11 @@ import torch
 from allennlp.common.checks import ConfigurationError
 import allennlp.nn.util as util
 
-'''
-Copy-paste from allennlp.modules.conditional_random_field 
+"""
+Copy-paste from allennlp.modules.conditional_random_field
 with modifications:
     * viterbi_tags output the best path insted of top k paths
-'''
+"""
 
 
 def allowed_transitions(constraint_type: str, labels: Dict[int, str]) -> List[Tuple[int, int]]:
@@ -39,20 +39,20 @@ def allowed_transitions(constraint_type: str, labels: Dict[int, str]) -> List[Tu
     num_labels = len(labels)
     start_tag = num_labels
     end_tag = num_labels + 1
-    labels_with_boundaries = list(labels.items()) + [(start_tag, "START"), (end_tag, "END")]
+    labels_with_boundaries = list(labels.items()) + [(start_tag, 'START'), (end_tag, 'END')]
 
     allowed = []
     for from_label_index, from_label in labels_with_boundaries:
-        if from_label in ("START", "END"):
+        if from_label in ('START', 'END'):
             from_tag = from_label
-            from_entity = ""
+            from_entity = ''
         else:
             from_tag = from_label[0]
             from_entity = from_label[1:]
         for to_label_index, to_label in labels_with_boundaries:
-            if to_label in ("START", "END"):
+            if to_label in ('START', 'END'):
                 to_tag = to_label
-                to_entity = ""
+                to_entity = ''
             else:
                 to_tag = to_label[0]
                 to_entity = to_label[1:]
@@ -96,14 +96,14 @@ def is_transition_allowed(constraint_type: str,
         Whether the transition is allowed under the given ``constraint_type``.
     """
     # pylint: disable=too-many-return-statements
-    if to_tag == "START" or from_tag == "END":
+    if to_tag == 'START' or from_tag == 'END':
         # Cannot transition into START or from END
         return False
 
-    if constraint_type == "BIOUL":
-        if from_tag == "START":
+    if constraint_type == 'BIOUL':
+        if from_tag == 'START':
             return to_tag in ('O', 'B', 'U')
-        if to_tag == "END":
+        if to_tag == 'END':
             return from_tag in ('O', 'L', 'U')
         return any([
             # O can transition to O, B-* or U-*
@@ -114,10 +114,10 @@ def is_transition_allowed(constraint_type: str,
             # I-x can only transition to I-x or L-x
             from_tag in ('B', 'I') and to_tag in ('I', 'L') and from_entity == to_entity
         ])
-    elif constraint_type == "BIO":
-        if from_tag == "START":
+    elif constraint_type == 'BIO':
+        if from_tag == 'START':
             return to_tag in ('O', 'B')
-        if to_tag == "END":
+        if to_tag == 'END':
             return from_tag in ('O', 'B', 'I')
         return any([
             # Can always transition to O or B-x
@@ -125,10 +125,10 @@ def is_transition_allowed(constraint_type: str,
             # Can only transition to I-x from B-x or I-x
             to_tag == 'I' and from_tag in ('B', 'I') and from_entity == to_entity
         ])
-    elif constraint_type == "IOB1":
-        if from_tag == "START":
+    elif constraint_type == 'IOB1':
+        if from_tag == 'START':
             return to_tag in ('O', 'I')
-        if to_tag == "END":
+        if to_tag == 'END':
             return from_tag in ('O', 'B', 'I')
         return any([
             # Can always transition to O or I-x
@@ -137,10 +137,10 @@ def is_transition_allowed(constraint_type: str,
             # x is the same tag.
             to_tag == 'B' and from_tag in ('B', 'I') and from_entity == to_entity
         ])
-    elif constraint_type == "BMES":
-        if from_tag == "START":
+    elif constraint_type == 'BMES':
+        if from_tag == 'START':
             return to_tag in ('B', 'S')
-        if to_tag == "END":
+        if to_tag == 'END':
             return from_tag in ('E', 'S')
         return any([
             # Can only transition to B or S from E or S.
@@ -153,7 +153,7 @@ def is_transition_allowed(constraint_type: str,
             to_tag == 'E' and from_tag in ('B', 'M') and from_entity == to_entity,
         ])
     else:
-        raise ConfigurationError(f"Unknown constraint type: {constraint_type}")
+        raise ConfigurationError(f'Unknown constraint type: {constraint_type}')
 
 
 class ConditionalRandomField(torch.nn.Module):
@@ -363,19 +363,19 @@ class ConditionalRandomField(torch.nn.Module):
 
         # Apply transition constraints
         constrained_transitions = (
-                self.transitions * self._constraint_mask[:num_tags, :num_tags] +
-                -10000.0 * (1 - self._constraint_mask[:num_tags, :num_tags])
+            self.transitions * self._constraint_mask[:num_tags, :num_tags] +
+            -10000.0 * (1 - self._constraint_mask[:num_tags, :num_tags])
         )
         transitions[:num_tags, :num_tags] = constrained_transitions.data
 
         if self.include_start_end_transitions:
             transitions[start_tag, :num_tags] = (
-                    self.start_transitions.detach() * self._constraint_mask[start_tag, :num_tags].data +
-                    -10000.0 * (1 - self._constraint_mask[start_tag, :num_tags].detach())
+                self.start_transitions.detach() * self._constraint_mask[start_tag, :num_tags].data +
+                -10000.0 * (1 - self._constraint_mask[start_tag, :num_tags].detach())
             )
             transitions[:num_tags, end_tag] = (
-                    self.end_transitions.detach() * self._constraint_mask[:num_tags, end_tag].data +
-                    -10000.0 * (1 - self._constraint_mask[:num_tags, end_tag].detach())
+                self.end_transitions.detach() * self._constraint_mask[:num_tags, end_tag].data +
+                -10000.0 * (1 - self._constraint_mask[:num_tags, end_tag].detach())
             )
         else:
             transitions[start_tag, :num_tags] = (-10000.0 *

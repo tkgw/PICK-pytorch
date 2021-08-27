@@ -2,31 +2,31 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/7/2020 8:34 PM
 
-from typing import *
 import math
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
 
 from data_utils import documents
 
 
 class GraphLearningLayer(nn.Module):
-    def __init__(self, in_dim: int, learning_dim: int, gamma: float, eta: float):
+    def __init__(self, in_dim: int, learning_dim: int, gamma: float, eta: float) -> None:
         super().__init__()
         self.projection = nn.Linear(in_dim, learning_dim, bias=False)
         self.learn_w = nn.Parameter(torch.empty(learning_dim))
         self.gamma = gamma
         self.eta = eta
-        self.inint_parameters()
+        self.init_parameters()
 
-    def inint_parameters(self):
+    def init_parameters(self) -> None:
         nn.init.uniform_(self.learn_w, a=0, b=1)
 
-    def forward(self, x: Tensor, adj: Tensor, box_num: Tensor = None):
-        '''
+    def forward(self, x: Tensor, adj: Tensor, box_num: Optional[Tensor] = None) -> Tuple[Tensor, Optional[Tensor]]:
+        """
 
         :param x: nodes set, (B*N, D)
         :param adj: init adj, (B, N, N, default is 1)
@@ -34,7 +34,7 @@ class GraphLearningLayer(nn.Module):
         :return:
                 out, soft adj matrix
                 gl loss
-        '''
+        """
         B, N, D = x.shape
 
         # (B, N, D)
@@ -74,14 +74,14 @@ class GraphLearningLayer(nn.Module):
         return soft_adj, gl_loss
 
     @staticmethod
-    def compute_static_mask(box_num: Tensor):
-        '''
+    def compute_static_mask(box_num: Tensor) -> Tensor:
+        """
         compute -1 mask, if node(box) is not exist, the length of mask is documents.MAX_BOXES_NUM,
         this will help with one nodes multi gpus training mechanism, and ensure batch shape is same. but this operation
         lead to waste memory.
         :param box_num: (B, 1)
         :return: (B, N, N, 1)
-        '''
+        """
         max_len = documents.MAX_BOXES_NUM
 
         # (B, N)
@@ -106,13 +106,13 @@ class GraphLearningLayer(nn.Module):
         return mask.unsqueeze(-1)
 
     @staticmethod
-    def compute_dynamic_mask(box_num: Tensor):
-        '''
+    def compute_dynamic_mask(box_num: Tensor) -> Tensor:
+        """
         compute -1 mask, if node(box) is not exist, the length of mask is calculate by max(box_num),
         this will help with multi nodes multi gpus training mechanism, ensure batch of different gpus have same shape.
         :param box_num: (B, 1)
         :return: (B, N, N, 1)
-        '''
+        """
         max_len = torch.max(box_num)
 
         # (B, N)
@@ -136,15 +136,15 @@ class GraphLearningLayer(nn.Module):
 
         return mask.unsqueeze(-1)
 
-    def _graph_learning_loss(self, x_hat: Tensor, adj: Tensor, box_num: Tensor):
-        '''
+    def _graph_learning_loss(self, x_hat: Tensor, adj: Tensor, box_num: Tensor) -> Tensor:
+        """
         calculate graph learning loss
         :param x_hat: (B, N, D)
         :param adj: (B, N, N)
         :param box_num: (B, 1)
         :return:
             gl_loss
-        '''
+        """
 
         B, N, D = x_hat.shape
         # (B, N, N, out_dim)
@@ -155,24 +155,24 @@ class GraphLearningLayer(nn.Module):
         box_num_div = 1 / torch.pow(box_num.float(), 2)
 
         # (B, N, N)
-        dist_loss = adj + self.eta * torch.norm(x_i - x_j, dim=3) # remove square operation duo to it can cause nan loss.
+        dist_loss = adj + self.eta * torch.norm(x_i - x_j, dim=3)  # remove square operation duo to it can cause nan loss.
         dist_loss = torch.exp(dist_loss)
         # (B,)
         dist_loss = torch.sum(dist_loss, dim=(1, 2)) * box_num_div.squeeze(-1)
         # (B,)
-        f_norm = torch.norm(adj, dim=(1, 2)) # remove square operation duo to it can cause nan loss.
+        f_norm = torch.norm(adj, dim=(1, 2))  # remove square operation duo to it can cause nan loss.
 
         gl_loss = dist_loss + self.gamma * f_norm
         return gl_loss
 
 
 class GCNLayer(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int):
-        '''
+    def __init__(self, in_dim: int, out_dim: int) -> None:
+        """
         perform graph convolution operation
         :param in_dim:
         :param out_dim:
-        '''
+        """
         super().__init__()
 
         self.w_alpha = nn.Parameter(torch.empty(in_dim, out_dim))
@@ -183,15 +183,15 @@ class GCNLayer(nn.Module):
 
         self.inint_parameters()
 
-    def inint_parameters(self):
+    def inint_parameters(self) -> None:
         nn.init.kaiming_uniform_(self.w_alpha, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.w_vi, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.w_vj, a=math.sqrt(5))
         nn.init.uniform_(self.bias_h, a=0, b=1)
         nn.init.kaiming_uniform_(self.w_node, a=math.sqrt(5))
 
-    def forward(self, x: Tensor, alpha: Tensor, adj: Tensor, box_num: Tensor):
-        '''
+    def forward(self, x: Tensor, alpha: Tensor, adj: Tensor, box_num: Tensor) -> Tuple:
+        """
 
         :param x: nodes set (node embedding), (B, N, in_dim)
         :param alpha: relation embedding, (B, N, N, in_dim)
@@ -200,7 +200,7 @@ class GCNLayer(nn.Module):
         :return:
                 x_out: updated node embedding, (B, N, out_dim)
                 alpha: updated relation embedding, (B, N, N, out_dim)
-        '''
+        """
 
         B, N, in_dim = x.shape
 
@@ -230,13 +230,13 @@ class GCNLayer(nn.Module):
 class GLCN(nn.Module):
 
     def __init__(self,
-                 in_dim: int,
-                 out_dim: int,
-                 gamma: float = 0.0001,
-                 eta: float = 1,
+                 in_dim: int = 512,
+                 out_dim: int = 512,
+                 gamma: float = 1.,
+                 eta: float = 1.,
                  learning_dim: int = 128,
-                 num_layers=2):
-        '''
+                 num_layers: int = 2) -> None:
+        """
         perform graph learning and multi-time graph convolution operation
         :param in_dim:
         :param out_dim:
@@ -244,7 +244,7 @@ class GLCN(nn.Module):
         :param eta:
         :param learning_dim:
         :param num_layers:
-        '''
+        """
         super().__init__()
 
         self.gl_layer = GraphLearningLayer(in_dim=in_dim, gamma=gamma, eta=eta, learning_dim=learning_dim)
@@ -259,8 +259,8 @@ class GLCN(nn.Module):
 
         self.alpha_transform = nn.Linear(6, in_dim, bias=False)
 
-    def forward(self, x: Tensor, rel_features: Tensor, adj: Tensor, box_num: Tensor, **kwargs):
-        '''
+    def forward(self, x: Tensor, rel_features: Tensor, adj: Tensor, box_num: Tensor, **kwargs) -> Tuple:
+        """
 
         :param x: nodes embedding, (B*N, D)
         :param rel_features: relation embedding, (B, N, N, 6)
@@ -268,7 +268,7 @@ class GLCN(nn.Module):
         :param box_num: (B, 1)
         :param kwargs:
         :return:
-        '''
+        """
         # relation features embedding, (B, N, N, in_dim)
         alpha = self.alpha_transform(rel_features)
 

@@ -11,13 +11,13 @@ import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
-'''
-Copy-paste from https://github.com/jwyang/faster-rcnn.pytorch/blob/master/lib/model/faster_rcnn/resnet.py 
+"""
+Copy-paste from https://github.com/jwyang/faster-rcnn.pytorch/blob/master/lib/model/faster_rcnn/resnet.py
 with modifications:
     * remove last two layers (fc, conv)
     * modified conv1, maxpool layers
     * add conv2, bn2, relu2 layers for output final feature maps
-'''
+"""
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
@@ -32,7 +32,7 @@ model_urls = {
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    "3x3 convolution with padding"
+    '3x3 convolution with padding'
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
@@ -173,7 +173,7 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet18(pretrained=False, output_channels=512):
+def resnet18(pretrained=False, output_channels=512) -> nn.Module:
     """Constructs a ResNet-18 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -184,7 +184,7 @@ def resnet18(pretrained=False, output_channels=512):
     return model
 
 
-def resnet34(pretrained=False, output_channels=512):
+def resnet34(pretrained=False, output_channels=512) -> nn.Module:
     """Constructs a ResNet-34 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -195,7 +195,7 @@ def resnet34(pretrained=False, output_channels=512):
     return model
 
 
-def resnet50(pretrained=False, output_channels=512):
+def resnet50(pretrained=False, output_channels=512) -> nn.Module:
     """Constructs a ResNet-50 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -206,7 +206,7 @@ def resnet50(pretrained=False, output_channels=512):
     return model
 
 
-def resnet101(pretrained=False, output_channels=512):
+def resnet101(pretrained=False, output_channels=512) -> nn.Module:
     """Constructs a ResNet-101 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -217,7 +217,7 @@ def resnet101(pretrained=False, output_channels=512):
     return model
 
 
-def resnet152(pretrained=False, output_channels=512):
+def resnet152(pretrained=False, output_channels=512) -> nn.Module:
     """Constructs a ResNet-152 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet

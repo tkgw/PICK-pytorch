@@ -2,7 +2,7 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 10:54 PM
 
-from typing import *
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -16,15 +16,15 @@ from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls
 
 class PICKModel(nn.Module):
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__()
-        embedding_kwargs = kwargs['embedding_kwargs']
-        encoder_kwargs = kwargs['encoder_kwargs']
-        graph_kwargs = kwargs['graph_kwargs']
-        decoder_kwargs = kwargs['decoder_kwargs']
+        embedding_kwargs: dict = kwargs['embedding_kwargs']
+        encoder_kwargs: dict = kwargs['encoder_kwargs']
+        graph_kwargs: dict = kwargs['graph_kwargs']
+        decoder_kwargs: dict = kwargs['decoder_kwargs']
         self.make_model(embedding_kwargs, encoder_kwargs, graph_kwargs, decoder_kwargs)
 
-    def make_model(self, embedding_kwargs, encoder_kwargs, graph_kwargs, decoder_kwargs):
+    def make_model(self, embedding_kwargs: dict, encoder_kwargs: dict, graph_kwargs: dict, decoder_kwargs: dict) -> None:
         # Given the params of each component, creates components.
         # embedding_kwargs-> word_emb
         embedding_kwargs['num_embeddings'] = len(keys_vocab_cls)
@@ -47,12 +47,12 @@ class PICKModel(nn.Module):
         self.decoder = Decoder(**decoder_kwargs)
 
     def _aggregate_avg_pooling(self, input, text_mask):
-        '''
+        """
         Apply mean pooling over time (text length), (B*N, T, D) -> (B*N, D)
         :param input: (B*N, T, D)
         :param text_mask: (B*N, T)
         :return: (B*N, D)
-        '''
+        """
         # filter out padding value, (B*N, T, D)
         input = input * text_mask.detach().unsqueeze(2).float()
         # (B*N, D)
@@ -68,10 +68,10 @@ class PICKModel(nn.Module):
 
     @staticmethod
     def compute_mask(mask: torch.Tensor):
-        '''
+        """
         :param mask: (B, N, T)
         :return: True for masked key position according to pytorch official implementation of Transformer
-        '''
+        """
         B, N, T = mask.shape
         mask = mask.reshape(B * N, T)
         mask_sum = mask.sum(dim=-1)  # (B*N,)
@@ -88,16 +88,16 @@ class PICKModel(nn.Module):
 
     def forward(self, **kwargs):
         # input
-        whole_image = kwargs['whole_image']  # (B, 3, H, W)
-        relation_features = kwargs['relation_features']  # initial relation embedding (B, N, N, 6)
-        text_segments = kwargs['text_segments']  # text segments (B, N, T)
-        text_length = kwargs['text_length']  # (B, N)
-        iob_tags_label = kwargs['iob_tags_label'] if self.training else None  # (B, N, T)
-        mask = kwargs['mask']  # (B, N, T)
-        boxes_coordinate = kwargs['boxes_coordinate']  # (B, num_boxes, 8)
+        whole_image: torch.Tensor = kwargs['whole_image']  # (B, 3, H, W)
+        relation_features: torch.Tensor = kwargs['relation_features']  # initial relation embedding (B, N, N, 6)
+        text_segments: torch.Tensor = kwargs['text_segments']  # text segments (B, N, T)
+        text_length: torch.Tensor = kwargs['text_length']  # (B, N)
+        iob_tags_label: Optional = kwargs['iob_tags_label'] if self.training else None  # (B, N, T)
+        mask: torch.Tensor = kwargs['mask']  # (B, N, T)
+        boxes_coordinate: torch.Tensor = kwargs['boxes_coordinate']  # (B, num_boxes, 8)
 
-        ##### Forward Begin #####
-        ### Encoder module ###
+        # ##### Forward Begin #####
+        # ### Encoder module ###
         # word embedding
         text_emb = self.word_emb(text_segments)
 
@@ -109,7 +109,7 @@ class PICKModel(nn.Module):
         x = self.encoder(images=whole_image, boxes_coordinate=boxes_coordinate, transcripts=text_emb,
                          src_key_padding_mask=src_key_padding_mask)
 
-        ### Graph module ###
+        # ### Graph module ###
         # text_mask, True for valid, (including all not valid node), (B*N, T)
         text_mask = torch.logical_not(src_key_padding_mask).byte()
         # (B*N, T, D) -> (B*N, D)
@@ -129,12 +129,12 @@ class PICKModel(nn.Module):
         x_gcn, soft_adj, gl_loss = self.graph(x_gcn, relation_features, init_adj, boxes_num)
         adj = soft_adj * init_adj
 
-        ### Decoder module ###
+        # ### Decoder module ###
         logits, new_mask, log_likelihood = self.decoder(x.reshape(B, N, T, -1), x_gcn, mask, text_length,
                                                         iob_tags_label)
-        ##### Forward End #####
+        # ##### Forward End #####
 
-        output = {"logits": logits, "new_mask": new_mask, "adj": adj}
+        output = {'logits': logits, 'new_mask': new_mask, 'adj': adj}
 
         if self.training:
             output['gl_loss'] = gl_loss
@@ -143,9 +143,9 @@ class PICKModel(nn.Module):
         return output
 
     def __str__(self):
-        '''
+        """
         Model prints with number of trainable parameters
-        '''
+        """
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
         return super().__str__() + '\nTrainable parameters: {}'.format(params)
