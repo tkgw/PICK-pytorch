@@ -15,7 +15,6 @@ from pick.parse_config import ConfigParser
 
 from trainer import Trainer
 
-
 # fix random seeds for reproducibility
 SEED = 123
 torch.manual_seed(SEED)

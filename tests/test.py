@@ -1,25 +1,21 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 10:53 AM
 
-import math
 import argparse
 import collections
 from pathlib import Path
-from tqdm import tqdm
-import pandas as pd
-import cv2
 
-import torch
-import torch.nn as nn
-from torch.utils.data.dataloader import DataLoader
-
-from model.graph import GLCN
-from parse_config import ConfigParser
 import model.pick as pick_arch
-from data_utils import pick_dataset
+import pandas as pd
+import torch
+from torch.utils.data.dataloader import DataLoader
+from tqdm import tqdm
 
-from model import resnet
-from data_utils.pick_dataset import PICKDataset, BatchCollateFn
+from pick.data_utils import pick_dataset
+from pick.data_utils.pick_dataset import BatchCollateFn, PICKDataset
+from pick.model import resnet
+from pick.model.graph import GLCN
+from pick.parse_config import ConfigParser
 
 
 def test_glcn_model():
@@ -63,7 +59,7 @@ def test_datasets():
                           resized_image_size=(480, 960))
 
     data_loader = DataLoader(dataset, batch_size=3, collate_fn=BatchCollateFn(), num_workers=2)
-    for idx, data_item in tqdm(enumerate(data_loader)):
+    for data_item in tqdm(data_loader):
         whole_image = data_item['whole_image']
         relation_features = data_item['relation_features']
         text_segments = data_item['text_segments']
@@ -112,7 +108,7 @@ def test_model_forward():
     #                       resized_image_size = (480, 960))
 
     data_loader = DataLoader(dataset, batch_size=2, collate_fn=BatchCollateFn(), num_workers=2)
-    for idx, data_item in tqdm(enumerate(data_loader)):
+    for data_item in tqdm(data_loader):
         for key, tensor in data_item.items():
             data_item[key] = tensor.to(device)
         output = pick_model(**data_item)

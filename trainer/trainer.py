@@ -151,8 +151,8 @@ class Trainer:
             if self.monitor_mode != 'off' and self.do_validation:
                 best, not_improved_count = self._is_best_monitor_metric(best, not_improved_count, val_result_dict)
                 if not_improved_count > self.early_stop:
-                    self.logger_info("Validation performance didn\'t improve for {} epochs. "
-                                     "Training stops.".format(self.early_stop))
+                    self.logger_info("Validation performance didn't improve for {} epochs. "
+                                     'Training stops.'.format(self.early_stop))
                     break
 
             if epoch % self.save_period == 0:
@@ -173,7 +173,7 @@ class Trainer:
             improved = (self.monitor_mode == 'min' and val_monitor_metric_res <= self.monitor_best) or \
                        (self.monitor_mode == 'max' and val_monitor_metric_res >= self.monitor_best)
         except KeyError:
-            self.logger_warning('Warning: Metric '{}' is not found. '
+            self.logger_warning('Warning: Metric "{}" is not found. '
                                 'Model performance monitoring is disabled.'.format(self.monitor_metric))
             self.monitor_mode = 'off'
             improved = False
@@ -313,7 +313,7 @@ class Trainer:
                     best_paths = self.model.decoder.crf_layer.viterbi_tags(logits, mask=new_mask,
                                                                            logits_batch_first=True)
                 predicted_tags = []
-                for path, score in best_paths:
+                for path, _ in best_paths:
                     predicted_tags.append(path)
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + step_idx, 'valid') \
@@ -377,8 +377,8 @@ class Trainer:
                 torch.cuda.set_device(device_ids[0])  # device_ids[0] =local_rank if local_world_size = n_gpu per node
                 device = 'cuda'
                 self.logger_info(
-                    f"[Process {os.getpid()}] world_size = {dist.get_world_size()}, "
-                    + f"rank = {dist.get_rank()}, n_gpu/process = {ngpu_per_process}, device_ids = {device_ids}"
+                    f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, '
+                    + f'rank = {dist.get_rank()}, n_gpu/process = {ngpu_per_process}, device_ids = {device_ids}'
                 )
             else:
                 self.logger_warning('Training will be using CPU!')
@@ -389,12 +389,12 @@ class Trainer:
             n_gpu = torch.cuda.device_count()
             n_gpu_use = local_world_size
             if n_gpu_use > 0 and n_gpu == 0:
-                self.logger_warning("Warning: There\'s no GPU available on this machine,"
-                                    "training will be performed on CPU.")
+                self.logger_warning("Warning: There's no GPU available on this machine, "
+                                    'training will be performed on CPU.')
                 n_gpu_use = 0
             if n_gpu_use > n_gpu:
-                self.logger_warning("Warning: The number of GPU\'s configured to use is {}, but only {} are available "
-                                    "on this machine.".format(n_gpu_use, n_gpu))
+                self.logger_warning("Warning: The number of GPU's configured to use is {}, but only {} are available "
+                                    'on this machine.'.format(n_gpu_use, n_gpu))
                 n_gpu_use = n_gpu
 
             list_ids = list(range(n_gpu_use))
@@ -436,11 +436,11 @@ class Trainer:
         if save_best:
             best_path = str(self.checkpoint_dir / 'model_best.pth')
             torch.save(state, best_path)
-            self.logger_info("Saving current best: model_best.pth ...")
+            self.logger_info('Saving current best: model_best.pth ...')
         else:
             filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
             torch.save(state, filename)
-            self.logger_info("Saving checkpoint: {} ...".format(filename))
+            self.logger_info('Saving checkpoint: {} ...'.format(filename))
 
     def _resume_checkpoint(self, resume_path):
         """
@@ -449,7 +449,7 @@ class Trainer:
         :return:
         """
         resume_path = str(resume_path)
-        self.logger_info("Loading checkpoint: {} ...".format(resume_path))
+        self.logger_info('Loading checkpoint: {} ...'.format(resume_path))
         # map_location = {'cuda:%d' % 0: 'cuda:%d' % self.config['local_rank']}
         checkpoint = torch.load(resume_path, map_location=self.device)
         self.start_epoch = checkpoint['epoch'] + 1
@@ -457,15 +457,15 @@ class Trainer:
 
         # load architecture params from checkpoint.
         if checkpoint['config']['model_arch'] != self.config['model_arch']:
-            self.logger_warning("Warning: Architecture configuration given in config file is different from that of "
-                                "checkpoint. This may yield an exception while state_dict is being loaded.")
+            self.logger_warning('Warning: Architecture configuration given in config file is different from that of '
+                                'checkpoint. This may yield an exception while state_dict is being loaded.')
         self.model.load_state_dict(checkpoint['state_dict'])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
-            self.logger_warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
-                                "Optimizer parameters not being resumed.")
+            self.logger_warning('Warning: Optimizer type given in config file is different from that of checkpoint. '
+                                'Optimizer parameters not being resumed.')
         else:
             self.optimizer.load_state_dict(checkpoint['optimizer'])
 
-        self.logger_info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
+        self.logger_info('Checkpoint loaded. Resume training from epoch {}'.format(self.start_epoch))
