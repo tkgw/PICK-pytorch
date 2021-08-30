@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/7/2020 8:34 PM
 
 import math
-from typing import Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -35,7 +34,7 @@ class GraphLearningLayer(nn.Module):
                 out, soft adj matrix
                 gl loss
         """
-        B, N, D = x.shape
+        B, N, _ = x.shape
 
         # (B, N, D)
         x_hat = self.projection(x)
@@ -54,8 +53,7 @@ class GraphLearningLayer(nn.Module):
             distance = distance + mask
 
         # (B, N, N)
-        distance = torch.einsum('bijd, d->bij', distance, self.learn_w)
-        out = F.leaky_relu(distance)
+        out = F.leaky_relu(torch.einsum('bijd, d->bij', distance, self.learn_w))
 
         # for numerical stability, due to softmax operation mable produce large value
         max_out_v, _ = out.max(dim=-1, keepdim=True)
@@ -116,7 +114,7 @@ class GraphLearningLayer(nn.Module):
         max_len = torch.max(box_num)
 
         # (B, N)
-        mask = torch.arange(0, max_len, device=box_num.device).expand((box_num.shape[0], max_len))
+        mask: Tensor = torch.arange(0, max_len, device=box_num.device).expand((box_num.shape[0], max_len))
 
         # (B, N)
         box_num = box_num.expand_as(mask)
@@ -155,12 +153,12 @@ class GraphLearningLayer(nn.Module):
         box_num_div = 1 / torch.pow(box_num.float(), 2)
 
         # (B, N, N)
-        dist_loss = adj + self.eta * torch.norm(x_i - x_j, dim=3)  # remove square operation duo to it can cause nan loss.
+        dist_loss: Tensor = adj + self.eta * torch.norm(x_i - x_j, dim=3)  # remove square operation duo to it can cause nan loss.
         dist_loss = torch.exp(dist_loss)
         # (B,)
         dist_loss = torch.sum(dist_loss, dim=(1, 2)) * box_num_div.squeeze(-1)
         # (B,)
-        f_norm = torch.norm(adj, dim=(1, 2))  # remove square operation duo to it can cause nan loss.
+        f_norm: Tensor = torch.norm(adj, dim=(1, 2))  # remove square operation duo to it can cause nan loss.
 
         gl_loss = dist_loss + self.gamma * f_norm
         return gl_loss
@@ -181,16 +179,16 @@ class GCNLayer(nn.Module):
         self.bias_h = nn.Parameter(torch.empty(in_dim))
         self.w_node = nn.Parameter(torch.empty(in_dim, out_dim))
 
-        self.inint_parameters()
+        self.init_parameters()
 
-    def inint_parameters(self) -> None:
+    def init_parameters(self) -> None:
         nn.init.kaiming_uniform_(self.w_alpha, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.w_vi, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.w_vj, a=math.sqrt(5))
         nn.init.uniform_(self.bias_h, a=0, b=1)
         nn.init.kaiming_uniform_(self.w_node, a=math.sqrt(5))
 
-    def forward(self, x: Tensor, alpha: Tensor, adj: Tensor, box_num: Tensor) -> Tuple:
+    def forward(self, x: Tensor, alpha: Tensor, adj: Tensor, box_num: Tensor) -> Tuple[Tensor, Tensor]:
         """
 
         :param x: nodes set (node embedding), (B, N, in_dim)
@@ -217,11 +215,11 @@ class GCNLayer(nn.Module):
 
         # update node embedding x, （B, N, out_dim）
         AH = torch.einsum('bij, bijd-> bid', adj, H)
-        new_x = torch.einsum('bid,dk->bik', AH, self.w_node)
+        new_x: Tensor = torch.einsum('bid,dk->bik', AH, self.w_node)
         new_x = F.relu(new_x)
 
         # update relation embedding, (B, N, N, out_dim)
-        new_alpha = torch.einsum('bijd,dk->bijk', H, self.w_alpha)
+        new_alpha: Tensor = torch.einsum('bijd,dk->bijk', H, self.w_alpha)
         new_alpha = F.relu(new_alpha)
 
         return new_x, new_alpha
@@ -248,18 +246,18 @@ class GLCN(nn.Module):
         super().__init__()
 
         self.gl_layer = GraphLearningLayer(in_dim=in_dim, gamma=gamma, eta=eta, learning_dim=learning_dim)
-        modules = []
+        modules: List[nn.Module] = []
         in_dim_cur = in_dim
-        for i in range(num_layers):
+        for _ in range(num_layers):
             m = GCNLayer(in_dim_cur, out_dim)
             in_dim_cur = out_dim
-            out_dim = in_dim_cur
+            # out_dim = in_dim_cur  # ?
             modules.append(m)
         self.gcn = nn.ModuleList(modules)
 
         self.alpha_transform = nn.Linear(6, in_dim, bias=False)
 
-    def forward(self, x: Tensor, rel_features: Tensor, adj: Tensor, box_num: Tensor, **kwargs) -> Tuple:
+    def forward(self, x: Tensor, rel_features: Tensor, adj: Tensor, box_num: Optional[Tensor], **kwargs: Any) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """
 
         :param x: nodes embedding, (B*N, D)
@@ -274,7 +272,7 @@ class GLCN(nn.Module):
 
         soft_adj, gl_loss = self.gl_layer(x, adj, box_num)
         adj = adj * soft_adj
-        for i, gcn_layer in enumerate(self.gcn):
+        for gcn_layer in self.gcn:
             x, alpha = gcn_layer(x, alpha, adj, box_num)
 
         return x, soft_adj, gl_loss

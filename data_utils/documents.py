@@ -1,17 +1,14 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/11/2020 10:57 AM
-
-from typing import *
-
-import re
-import cv2
 import json
+import re
 import string
 from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from torchtext.data import Field, RawField
+import cv2
 import numpy as np
+from torchtext.data import Field, RawField
 
 from utils.entities_list import Entities_list
 from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls, entities_vocab_cls
@@ -28,11 +25,20 @@ IOBTagsField.vocab = iob_labels_vocab_cls
 
 
 class Document:
+    whole_image: np.ndarray
+    text_segments: Tuple[np.ndarray, np.ndarray]
+    boxes_coordinate: List[np.ndarray]
+    relation_features: np.ndarray
+    mask: np.ndarray
+    boxes_num: int
+    transcript_len: int
+    image_index: Optional[int]
+
     def __init__(self, boxes_and_transcripts_file: Path, image_file: Path,
                  resized_image_size: Tuple[int, int] = (480, 960),
-                 iob_tagging_type: str = 'box_level', entities_file: Path = None, training: bool = True,
-                 image_index=None):
-        '''
+                 iob_tagging_type: str = 'box_level', entities_file: Optional[Path] = None, training: bool = True,
+                 image_index: Optional[int] = None) -> None:
+        """
         An item returned by dataset.
 
         :param boxes_and_transcripts_file: gt or ocr results file
@@ -43,7 +49,7 @@ class Document:
         :param training: True for train and validation mode, False for test mode. True will also load labels,
         and entities_file must be set.
         :param image_index: image index, used to get image file name
-        '''
+        """
         self.resized_image_size = resized_image_size
         self.training = training
         assert iob_tagging_type in ['box_level', 'document_level', 'box_and_within_box_level'], \
@@ -62,27 +68,28 @@ class Document:
                 # boxes_and_transcripts_data = [(index, [x1, y1, ...], transcript, entity_type), ...]
                 boxes_and_transcripts_data = read_gt_file_with_box_entity_type(boxes_and_transcripts_file.as_posix())
             else:
-                boxes_and_transcripts_data = read_ocr_file_without_box_entity_type(
-                    boxes_and_transcripts_file.as_posix())
+                boxes_and_transcripts_data = read_ocr_file_without_box_entity_type(boxes_and_transcripts_file.as_posix())
 
             # Sort the box based on the position.
             boxes_and_transcripts_data = sort_box_with_list(boxes_and_transcripts_data)
 
             # read image
-            image = cv2.imread(image_file.as_posix())
+            image: np.ndarray = cv2.imread(image_file.as_posix())
         except Exception as e:
             raise IOError('Error occurs in image {}: {}'.format(image_file.stem, e.args))
 
-        boxes, transcripts, box_entity_types = [], [], []
+        boxes: List[List[float]] = []
+        transcripts: List[str] = []
+        box_entity_types: List[str] = []
         if self.training:
-            for index, points, transcript, entity_type in boxes_and_transcripts_data:
+            for _, points, transcript, entity_type in boxes_and_transcripts_data:
                 if len(transcript) == 0:
                     transcript = ' '
                 boxes.append(points)
                 transcripts.append(transcript)
                 box_entity_types.append(entity_type)
         else:
-            for index, points, transcript in boxes_and_transcripts_data:
+            for _, points, transcript in boxes_and_transcripts_data:
                 if len(transcript) == 0:
                     transcript = ' '
                 boxes.append(points)
@@ -105,32 +112,31 @@ class Document:
             y_scale = self.resized_image_size[1] / height
 
             # get min area box for each (original) boxes, for calculate initial relation features
-            min_area_boxes = [cv2.minAreaRect(np.array(box, dtype=np.float32).reshape(4, 2)) for box in
-                              boxes[:boxes_num]]
+            min_area_boxes: List[Tuple[Tuple[int, int], Tuple[int, int], float]] = [
+                cv2.minAreaRect(np.array(box, dtype=np.float32).reshape(4, 2)) for box in boxes[:boxes_num]]
 
             # calculate resized image box coordinate, and initial relation features between boxes (nodes)
-            resized_boxes = []
+            resized_boxes: List[np.ndarray] = []
             for i in range(boxes_num):
                 box_i = boxes[i]
-                transcript_i = transcripts[i]
 
                 # get resized images's boxes coordinate, used to ROIAlign in Encoder layer
-                resized_box_i = [int(np.round(pos * x_scale)) if i % 2 == 0 else int(np.round(pos * y_scale))
-                                 for i, pos in enumerate(box_i)]
+                resized_box_i: np.ndarray = np.array([
+                    int(np.round(pos * x_scale)) if i % 2 == 0 else int(np.round(pos * y_scale))
+                    for i, pos in enumerate(box_i)], dtype=np.float32)
 
-                resized_rect_output_i = cv2.minAreaRect(np.array(resized_box_i, dtype=np.float32).reshape(4, 2))
+                resized_rect_output_i = cv2.minAreaRect(resized_box_i.reshape(4, 2))
                 resized_box_i = cv2.boxPoints(resized_rect_output_i)
                 resized_box_i = resized_box_i.reshape((8,))
                 resized_boxes.append(resized_box_i)
 
                 # enumerate each box, calculate relation features between i and other nodes.
                 # formula (9)
-                self.relation_features_between_ij_nodes(boxes_num, i, min_area_boxes, relation_features, transcript_i,
-                                                        transcripts)
+                self.relation_features_between_ij_nodes(boxes_num, i, min_area_boxes, relation_features, transcripts)
 
             relation_features = normalize_relation_features(relation_features, width=width, height=height)
             # The length of texts of each segment.
-            text_segments = [list(trans) for trans in transcripts[:boxes_num]]
+            # text_segments: List[List[str]] = [list(trans) for trans in transcripts[:boxes_num]]
 
             if self.training:
                 # assign iob label to input text through exactly match way, this process needs entity-level label
@@ -157,16 +163,18 @@ class Document:
                 box_entity_types = [entities_vocab_cls.stoi[t] for t in box_entity_types[:boxes_num]]
 
             # texts shape is (num_texts, max_texts_len), texts_len shape is (num_texts,)
-            texts, texts_len = TextSegmentsField.process(text_segments)
-            texts = texts[:, :transcript_len].numpy()
-            texts_len = np.clip(texts_len.numpy(), 0, transcript_len)
-            text_segments = (texts, texts_len)
+            # texts, texts_len = TextSegmentsField.process(text_segments)
+            texts, texts_len = TextSegmentsField.process([list(trans) for trans in transcripts[:boxes_num]])
+            texts: np.ndarray = texts[:, :transcript_len].numpy()
+            texts_len: np.ndarray = np.clip(texts_len.numpy(), 0, transcript_len)
+            text_segments: Tuple[np.ndarray, np.ndarray] = (texts, texts_len)
 
             for i in range(boxes_num):
                 mask[i, :texts_len[i]] = 1
 
             self.whole_image = RawField().preprocess(image)
-            self.text_segments = TextSegmentsField.preprocess(text_segments)  # (text, texts_len)
+            # self.text_segments = TextSegmentsField.preprocess(text_segments)  # (text, texts_len)
+            self.text_segments = text_segments  # (text, texts_len)
             self.boxes_coordinate = RawField().preprocess(resized_boxes)
             self.relation_features = RawField().preprocess(relation_features)
             self.mask = RawField().preprocess(mask)
@@ -180,9 +188,13 @@ class Document:
         except Exception as e:
             raise RuntimeError('Error occurs in image {}: {}'.format(boxes_and_transcripts_file.stem, e.args))
 
-    def relation_features_between_ij_nodes(self, boxes_num, i, min_area_boxes, relation_features, transcript_i,
-                                           transcripts):
-        '''
+    def relation_features_between_ij_nodes(
+            self,
+            boxes_num: int, i: int,
+            min_area_boxes: List[Tuple[Tuple[int, int], Tuple[int, int], float]],
+            relation_features: np.ndarray,
+            transcripts: List[str]):
+        """
         calculate node i and other nodes' initial relation features.
         :param boxes_num:
         :param i:
@@ -191,53 +203,44 @@ class Document:
         :param transcript_i:  transcripts[i]
         :param transcripts:
         :return:
-        '''
+        """
+        transcript_i = transcripts[i]
+        rect_output_i = min_area_boxes[i]
+        center_i = rect_output_i[0]
+        width_i, height_i = rect_output_i[1]
         for j in range(boxes_num):
             transcript_j = transcripts[j]
-
-            rect_output_i = min_area_boxes[i]
             rect_output_j = min_area_boxes[j]
-
-            # Centers of rect_of_box_i and rect_of_box_j.
-            center_i = rect_output_i[0]
             center_j = rect_output_j[0]
-
-            width_i, height_i = rect_output_i[1]
             width_j, height_j = rect_output_j[1]
 
             # Center distances of boxes on x-axis.
-            relation_features[i, j, 0] = np.abs(center_i[0] - center_j[0]) \
-                if np.abs(center_i[0] - center_j[0]) is not None else -1  # x_ij
+            relation_features[i, j, 0] = np.abs(center_i[0] - center_j[0])  # x_ij
 
             # Center distances of boxes on y-axis.
-            relation_features[i, j, 1] = np.abs(center_i[1] - center_j[1]) \
-                if np.abs(center_i[1] - center_j[1]) is not None else -1  # y_ij
+            relation_features[i, j, 1] = np.abs(center_i[1] - center_j[1])  # y_ij
 
-            relation_features[i, j, 2] = width_i / (height_i) \
-                if height_i != 0 and width_i / (height_i) is not None else -1  # w_i/h_i
+            relation_features[i, j, 2] = width_i / height_i  # w_i/h_i
 
-            relation_features[i, j, 3] = height_j / (height_i) \
-                if height_i != 0 and height_j / (height_i) is not None else -1  # h_j/h_i
+            relation_features[i, j, 3] = height_j / height_i  # h_j/h_i
 
-            relation_features[i, j, 4] = width_j / (height_i) \
-                if height_i != 0 and width_j / (height_i) is not None else -1  # w_j/h_i
+            relation_features[i, j, 4] = width_j / height_i  # w_j/h_i
 
-            relation_features[i, j, 5] = len(transcript_j) / (len(transcript_i)) \
-                if len(transcript_j) / (len(transcript_i)) is not None else -1  # T_j/T_i
+            relation_features[i, j, 5] = len(transcript_j) / len(transcript_i)  # T_j/T_i
 
 
-def read_gt_file_with_box_entity_type(filepath: str):
+def read_gt_file_with_box_entity_type(filepath: str) -> List[Tuple[int, List[float], str, str]]:
     with open(filepath, 'r', encoding='utf-8') as f:
         document_text = f.read()
 
     # match pattern in document: index,x1,y1,x2,y2,x3,y3,x4,y4,transcript,box_entity_type
-    regex = r"^\s*(-?\d+)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*," \
-            r"\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,(.*),(.*)\n?$"
+    regex = r'^\s*(-?\d+)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,' \
+            r'\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,(.*),(.*)\n?$'
 
     matches = re.finditer(regex, document_text, re.MULTILINE)
 
-    res = []
-    for matchNum, match in enumerate(matches, start=1):
+    res: List[Tuple[int, List[float], str, str]] = []
+    for _, match in enumerate(matches, start=1):
         index = int(match.group(1))
         points = [float(match.group(i)) for i in range(2, 10)]
         transcription = str(match.group(10))
@@ -246,18 +249,18 @@ def read_gt_file_with_box_entity_type(filepath: str):
     return res
 
 
-def read_ocr_file_without_box_entity_type(filepath: str):
+def read_ocr_file_without_box_entity_type(filepath: str) -> List[Tuple[int, List[float], str]]:
     with open(filepath, 'r', encoding='utf-8') as f:
         document_text = f.read()
 
     # match pattern in document: index,x1,y1,x2,y2,x3,y3,x4,y4,transcript
-    regex = r"^\s*(-?\d+)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*," \
-            r"\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,(.*)\n?$"
+    regex = r'^\s*(-?\d+)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,' \
+            r'\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,(.*)\n?$'
 
     matches = re.finditer(regex, document_text, re.MULTILINE)
 
-    res = []
-    for matchNum, match in enumerate(matches, start=1):
+    res: List[Tuple[int, List[float], str]] = []
+    for _, match in enumerate(matches, start=1):
         index = int(match.group(1))
         points = [float(match.group(i)) for i in range(2, 10)]
         transcription = str(match.group(10))
@@ -265,7 +268,9 @@ def read_ocr_file_without_box_entity_type(filepath: str):
     return res
 
 
-def sort_box_with_list(data: List[Tuple], left_right_first=False):
+def sort_box_with_list(data: Union[List[Tuple[int, List[float], str, str]], List[Tuple[int, List[float], str]]],
+                       left_right_first: bool = False
+                       ) -> Union[List[Tuple[int, List[float], str, str]], List[Tuple[int, List[float], str]]]:
     def compare_key(x):
         #  x is (index, points, transcription, type) or (index, points, transcription)
         points = x[1]
@@ -282,9 +287,9 @@ def sort_box_with_list(data: List[Tuple], left_right_first=False):
     return data
 
 
-def normalize_relation_features(feat: np.ndarray, width: int, height: int):
+def normalize_relation_features(feat: np.ndarray, width: int, height: int) -> np.ndarray:
     # TODO check _NoValueType value (None)
-    np.clip(feat, 1e-8, np.inf)
+    np.clip(feat, 1e-8, np.inf)  # ?
     feat[:, :, 0] = feat[:, :, 0] / width
     feat[:, :, 1] = feat[:, :, 1] / height
 
@@ -299,13 +304,13 @@ def normalize_relation_features(feat: np.ndarray, width: int, height: int):
 
 
 def text2iob_label_with_box_level_match(annotation_box_types: List[str], transcripts: List[str]) -> List[List[str]]:
-    '''
+    """
      convert transcripts to iob label using box level tagging match method
     :param annotation_box_types: each transcripts box belongs to the corresponding entity types
     :param transcripts: transcripts of documents
     :return:
-    '''
-    tags = []
+    """
+    tags: List[List[str]] = []
     for entity_type, transcript in zip(annotation_box_types, transcripts):
         if entity_type in Entities_list:
             if len(transcript) == 1:
@@ -320,22 +325,21 @@ def text2iob_label_with_box_level_match(annotation_box_types: List[str], transcr
     return tags
 
 
-def text2iob_label_with_document_level_exactly_match(transcripts: List[str], exactly_entities_label: Dict) -> List[
-    List[str]]:
-    '''
+def text2iob_label_with_document_level_exactly_match(transcripts: List[str], exactly_entities_label: Dict[Any, Any]) -> List[List[str]]:
+    """
      convert transcripts to iob label using document level tagging match method,
      all transcripts will be concatenated as a sequences.
     :param transcripts: transcripts of documents
     :param exactly_entities_label: exactly entity type and entity value of documents
     :return:
-    '''
-    concatenated_sequences = []
-    sequences_len = []
+    """
+    concatenated_sequences: List[str] = []
+    sequences_len: List[int] = []
     for transcript in transcripts:
         concatenated_sequences.extend(list(transcript))
         sequences_len.append(len(transcript))
 
-    result_tags = ['O'] * len(concatenated_sequences)
+    result_tags: List[str] = ['O'] * len(concatenated_sequences)
     for entity_type, entity_value in exactly_entities_label.items():
         if entity_type not in Entities_list:
             continue
@@ -351,7 +355,7 @@ def text2iob_label_with_document_level_exactly_match(transcripts: List[str], exa
                 tag[0] = 'B-{}'.format(entity_type)
                 result_tags[src_idx[i]:src_idx[i + tgt_len - 1] + 1] = tag
 
-    tagged_transcript = []
+    tagged_transcript: List[List[str]] = []
     start = 0
     for length in sequences_len:
         tagged_transcript.append(result_tags[start: start + length])
@@ -364,8 +368,8 @@ def text2iob_label_with_document_level_exactly_match(transcripts: List[str], exa
 def text2iob_label_with_box_and_within_box_exactly_level(annotation_box_types: List[str],
                                                          transcripts: List[str],
                                                          exactly_entities_label: Dict[str, str],
-                                                         box_level_entities: List[str]) -> List[List[str]]:
-    '''
+                                                         box_level_entities: List[str]) -> List[Optional[List[str]]]:
+    """
      box_level_entities will perform box level tagging, others will perform exactly matching within specific box.
     :param annotation_box_types: each transcripts box belongs to the corresponding entity types
     :param transcripts: transcripts of documents
@@ -373,16 +377,16 @@ def text2iob_label_with_box_and_within_box_exactly_level(annotation_box_types: L
     :param box_level_entities: using box level label tagging, this result is same as
                     function of text2iob_label_with_box_level_match
     :return:
-    '''
+    """
 
-    def exactly_match_within_box(transcript: str, entity_type: str, entity_exactly_value: str):
-        '''
+    def exactly_match_within_box(transcript: str, entity_type: str, entity_exactly_value: str) -> Tuple[bool, Optional[List[str]]]:
+        """
         perform exactly match in the scope of current box
         :param transcript: the transcript of current box
         :param entity_type: the entity type of current box
         :param entity_exactly_value: exactly label value of corresponding entity type
         :return:
-        '''
+        """
         matched = False
 
         # Preprocess remove the punctuations and whitespaces.
@@ -403,7 +407,7 @@ def text2iob_label_with_box_and_within_box_exactly_level(annotation_box_types: L
 
         return matched, result_tags
 
-    tags = []
+    tags: List[Optional[List[str]]] = []
     for entity_type, transcript in zip(annotation_box_types, transcripts):
         entity_type = entity_type.strip()
         if entity_type in Entities_list:
@@ -425,15 +429,16 @@ def text2iob_label_with_box_and_within_box_exactly_level(annotation_box_types: L
     return tags
 
 
-def preprocess_transcripts(transcripts: List[str]):
-    '''
+def preprocess_transcripts(transcripts: Iterable[str]) -> Tuple[List[str], List[int]]:
+    """
     preprocess texts into separated word-level list, this is helpful to matching tagging label between source and target label,
     e.g. source: xxxx hello ! world xxxx  target: xxxx hello world xxxx,
     we want to match 'hello ! world' with 'hello world' to decrease the impact of ocr bad result.
     :param transcripts:
     :return: seq: the cleaned sequence, idx: the corresponding indices.
-    '''
-    seq, idx = [], []
+    """
+    seq: List[str] = []
+    idx: List[int] = []
     for index, x in enumerate(transcripts):
         if x not in string.punctuation and x not in string.whitespace:
             seq.append(x)

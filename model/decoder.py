@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 9:21 PM
 
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -11,12 +10,14 @@ from torch import Tensor
 
 from .crf import ConditionalRandomField
 from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls
-from data_utils import documents
 
 logger = logging.getLogger('PICK')
 
 
 class MLPLayer(nn.Module):
+    out_dim: int
+    mlp: nn.Sequential
+
     def __init__(self,
                  in_dim: int,
                  out_dim: Optional[int] = None,
@@ -34,7 +35,7 @@ class MLPLayer(nn.Module):
         :param activation:
         """
         super().__init__()
-        layers = []
+        layers: List[nn.Module] = []
         activation_layer = {
             'relu': nn.ReLU(),
             'leaky_relu': nn.LeakyReLU
@@ -66,20 +67,16 @@ class MLPLayer(nn.Module):
 
 class BiLSTMLayer(nn.Module):
 
-    def __init__(self, lstm_kwargs, mlp_kwargs) -> None:
+    def __init__(self, lstm_kwargs: Dict[str, Any], mlp_kwargs: Dict[str, Any]) -> None:
         super().__init__()
         self.lstm = nn.LSTM(**lstm_kwargs)
         self.mlp = MLPLayer(**mlp_kwargs)
 
     @staticmethod
-    def sort_tensor(x: torch.Tensor, length: torch.Tensor, h_0: torch.Tensor = None, c_0: torch.Tensor = None) -> Tuple:
-        sorted_lenght, sorted_order = torch.sort(length, descending=True)
+    def sort_tensor(x: torch.Tensor, length: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        sorted_length, sorted_order = torch.sort(length, descending=True)
         _, invert_order = sorted_order.sort(0, descending=False)
-        if h_0 is not None:
-            h_0 = h_0[:, sorted_order, :]
-        if c_0 is not None:
-            c_0 = c_0[:, sorted_order, :]
-        return x[sorted_order], sorted_lenght, invert_order, h_0, c_0
+        return x[sorted_order], sorted_length, invert_order
 
     def forward(self, x_seq: torch.Tensor,
                 lengths: torch.Tensor,
@@ -93,7 +90,7 @@ class BiLSTMLayer(nn.Module):
         """
 
         # B*N, T, hidden_size
-        x_seq, sorted_lengths, invert_order, h_0, c_0 = self.sort_tensor(x_seq, lenghts, initial[0], initial[0])
+        x_seq, sorted_lengths, invert_order = self.sort_tensor(x_seq, lengths)
         packed_x = nn.utils.rnn.pack_padded_sequence(x_seq, lengths=sorted_lengths.cpu(), batch_first=True)
         self.lstm.flatten_parameters()
         output, _ = self.lstm(packed_x)

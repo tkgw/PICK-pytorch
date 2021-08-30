@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/7/2020 5:54 PM
 
@@ -14,6 +13,7 @@ from . import resnet
 
 
 class Encoder(nn.Module):
+    position_embedding: torch.Tensor
 
     def __init__(self,
                  char_embedding_dim: int = 512,
@@ -48,7 +48,7 @@ class Encoder(nn.Module):
             roi_pooling_mode)
         self.roi_pooling_mode = roi_pooling_mode
         assert roi_pooling_size and len(roi_pooling_size) == 2, 'roi_pooling_size not be set properly.'
-        self.roi_pooling_size = tuple(roi_pooling_size)  # (h, w)
+        self.roi_pooling_size = (roi_pooling_size[0], roi_pooling_size[1])  # (h, w)
 
         transformer_encoder_layer = nn.TransformerEncoderLayer(d_model=char_embedding_dim,
                                                                nhead=nheaders,
@@ -137,7 +137,7 @@ class Encoder(nn.Module):
 
         # (B*N, D, 1, 1)
         image_segments = F.relu(self.bn(self.conv(image_segments)))
-        # # (B*N, D,)
+        # (B*N, D)
         image_segments = image_segments.squeeze()
 
         # (B*N, 1, D)

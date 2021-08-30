@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 10:39 PM
 
@@ -66,7 +65,7 @@ def is_transition_allowed(constraint_type: str,
                           from_tag: str,
                           from_entity: str,
                           to_tag: str,
-                          to_entity: str):
+                          to_entity: str) -> bool:
     """
     Given a constraint type and strings ``from_tag`` and ``to_tag`` that
     represent the origin and destination of the transition, return whether

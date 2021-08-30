@@ -1,24 +1,23 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 9:26 PM
-
-
 from collections import Counter
-from torchtext.vocab import Vocab
 from pathlib import Path
+from typing import Any, List, Tuple, Union
+
+from torchtext.vocab import Vocab
 
 from . import entities_list
 
 
 class ClassVocab(Vocab):
 
-    def __init__(self, classes, specials=['<pad>', '<unk>'], **kwargs):
-        '''
+    def __init__(self, classes: Union[str, Path, List[str]], specials: Tuple[str, ...] = ('<pad>', '<unk>'), **kwargs: Any) -> None:
+        """
         convert key to index(stoi), and get key string by index(itos)
         :param classes: list or str, key string or entity list
         :param specials: list, special tokens except <unk> (default: {['<pad>', '<unk>']})
         :param kwargs:
-        '''
+        """
         cls_list = None
         if isinstance(classes, str):
             cls_list = list(classes)
@@ -32,18 +31,18 @@ class ClassVocab(Vocab):
                 cls_list = list(classes)
         elif isinstance(classes, list):
             cls_list = classes
-        c = Counter(cls_list)
+        c: Counter = Counter(cls_list)
         self.special_count = len(specials)
         super().__init__(c, specials=specials, **kwargs)
 
 
-def entities2iob_labels(entities: list):
-    '''
+def entities2iob_labels(entities: List[str]) -> List[str]:
+    """
     get all iob string label by entities
     :param entities:
     :return:
-    '''
-    tags = []
+    """
+    tags: List[str] = []
     for e in entities:
         tags.append('B-{}'.format(e))
         tags.append('I-{}'.format(e))

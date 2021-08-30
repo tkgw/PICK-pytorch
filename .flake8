@@ -1,6 +1,13 @@
 [flake8]
-ignore = F401, F403
-max-line-length = 120
+ignore = 
+    E501  # Line too long
+    W503  # Line break occurred before a binary operator
+    W504  # Line break occurred after a binary operator
+    N806  # variable in function should be lowercase
+    H301  # one import per line
+    H306  # imports not in alphabetical order
+    SIM106  # Handle error-cases first
+max-line-length = 160
 exclude =
     .git,
     __pycache__,

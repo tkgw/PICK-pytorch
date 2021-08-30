@@ -1,23 +1,22 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/9/2020 9:16 PM
-import glob
 import os
-from typing import *
-from pathlib import Path
-import warnings
 import random
-from overrides import overrides
+import warnings
+from pathlib import Path
+from typing import List, Tuple
 
+import pandas as pd
 import torch
 import torch.nn.functional as F
+from overrides import overrides
 from torch.utils.data import Dataset
 from torchvision import transforms
-import pandas as pd
 
 from . import documents
 from .documents import Document
-from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls, entities_vocab_cls
+from utils.class_utils import (entities_vocab_cls, iob_labels_vocab_cls,
+                               keys_vocab_cls)
 
 
 class PICKDataset(Dataset):
@@ -32,7 +31,7 @@ class PICKDataset(Dataset):
                  ignore_error: bool = False,
                  training: bool = True
                  ):
-        '''
+        """
 
         :param files_name: containing training and validation samples list file.
         :param boxes_and_transcripts_folder: gt or ocr result containing transcripts, boxes and box entity type (optional).
@@ -44,7 +43,7 @@ class PICKDataset(Dataset):
         :param ignore_error:
         :param training: True for train and validation mode, False for test mode. True will also load labels,
         and files_name and entities_file must be set.
-        '''
+        """
         super().__init__()
         self._image_ext = None
         self._ann_ext = None
@@ -61,9 +60,8 @@ class PICKDataset(Dataset):
             self.boxes_and_transcripts_folder: Path = self.data_root.joinpath(boxes_and_transcripts_folder)
             self.images_folder: Path = self.data_root.joinpath(images_folder)
             self.entities_folder: Path = self.data_root.joinpath(entities_folder)
-            if self.iob_tagging_type != 'box_level':
-                if not self.entities_folder.exists():
-                    raise FileNotFoundError('Entity folder is not exist!')
+            if self.iob_tagging_type != 'box_level' and not self.entities_folder.exists():
+                raise FileNotFoundError('Entity folder is not exist!')
         else:  # used for test mode
             self.boxes_and_transcripts_folder: Path = Path(boxes_and_transcripts_folder)
             self.images_folder: Path = Path(images_folder)
@@ -143,10 +141,10 @@ class PICKDataset(Dataset):
                 raise RuntimeError('Error occurs in image {}: {}'.format(boxes_and_transcripts_file.stem, e.args))
 
 
-class BatchCollateFn(object):
-    '''
+class BatchCollateFn:
+    """
     padding input (List[Example]) with same shape, then convert it to batch input.
-    '''
+    """
 
     def __init__(self, training: bool = True):
         self.trsfm = transforms.Compose([
@@ -168,7 +166,7 @@ class BatchCollateFn(object):
         # max_boxes_num_batch = documents.MAX_BOXES_NUM
         # max_transcript_len = documents.MAX_TRANSCRIPT_LEN
 
-        ### padding every sample with same shape, then construct batch_list samples  ###
+        # ### padding every sample with same shape, then construct batch_list samples  ###
 
         # whole image, B, C, H, W
         image_batch_tensor = torch.stack([self.trsfm(x.whole_image) for x in batch_list], dim=0).float()

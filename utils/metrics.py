@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/11/2020 10:02 PM
 
@@ -13,11 +12,11 @@ import tabulate
 
 class MetricTracker:
     def __init__(self, *keys, writer=None):
-        '''
+        """
         loss metric tracker
         :param keys:
         :param writer:
-        '''
+        """
         self.writer = writer
         columns = ['total', 'counts', 'average']
         self._data = pd.DataFrame(np.zeros((len(keys), len(columns))), index=keys, columns=columns)
@@ -42,9 +41,9 @@ class MetricTracker:
 
 
 class SpanBasedF1MetricTracker:
-    '''
+    """
     mEF metrics tracker
-    '''
+    """
 
     def __init__(self, vocab, **kwargs):
         metric = SpanBasedF1Measure(vocab=vocab, **kwargs)

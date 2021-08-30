@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 10:54 PM
 
-from typing import Optional
+from typing import Any, Dict, Optional, Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 from .encoder import Encoder
 from .graph import GLCN
@@ -16,15 +15,15 @@ from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls
 
 class PICKModel(nn.Module):
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__()
-        embedding_kwargs: dict = kwargs['embedding_kwargs']
-        encoder_kwargs: dict = kwargs['encoder_kwargs']
-        graph_kwargs: dict = kwargs['graph_kwargs']
-        decoder_kwargs: dict = kwargs['decoder_kwargs']
+        embedding_kwargs: Dict[str, Any] = kwargs['embedding_kwargs']
+        encoder_kwargs: Dict[str, Any] = kwargs['encoder_kwargs']
+        graph_kwargs: Dict[str, Any] = kwargs['graph_kwargs']
+        decoder_kwargs: Dict[str, Any] = kwargs['decoder_kwargs']
         self.make_model(embedding_kwargs, encoder_kwargs, graph_kwargs, decoder_kwargs)
 
-    def make_model(self, embedding_kwargs: dict, encoder_kwargs: dict, graph_kwargs: dict, decoder_kwargs: dict) -> None:
+    def make_model(self, embedding_kwargs: Dict[str, Any], encoder_kwargs: Dict[str, Any], graph_kwargs: Dict[str, Any], decoder_kwargs: Dict[str, Any]) -> None:
         # Given the params of each component, creates components.
         # embedding_kwargs-> word_emb
         embedding_kwargs['num_embeddings'] = len(keys_vocab_cls)
@@ -46,7 +45,7 @@ class PICKModel(nn.Module):
         decoder_kwargs['crf_kwargs']['num_tags'] = len(iob_labels_vocab_cls)
         self.decoder = Decoder(**decoder_kwargs)
 
-    def _aggregate_avg_pooling(self, input, text_mask):
+    def _aggregate_avg_pooling(self, input: torch.Tensor, text_mask: torch.Tensor) -> torch.Tensor:
         """
         Apply mean pooling over time (text length), (B*N, T, D) -> (B*N, D)
         :param input: (B*N, T, D)
@@ -67,7 +66,7 @@ class PICKModel(nn.Module):
         return mean_out
 
     @staticmethod
-    def compute_mask(mask: torch.Tensor):
+    def compute_mask(mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         :param mask: (B, N, T)
         :return: True for masked key position according to pytorch official implementation of Transformer
@@ -86,13 +85,13 @@ class PICKModel(nn.Module):
         src_key_padding_mask = torch.logical_not(mask.bool()) & graph_node_mask  # True for padding mask position
         return src_key_padding_mask, graph_node_mask
 
-    def forward(self, **kwargs):
+    def forward(self, **kwargs: Any) -> Dict[str, Any]:
         # input
         whole_image: torch.Tensor = kwargs['whole_image']  # (B, 3, H, W)
         relation_features: torch.Tensor = kwargs['relation_features']  # initial relation embedding (B, N, N, 6)
         text_segments: torch.Tensor = kwargs['text_segments']  # text segments (B, N, T)
         text_length: torch.Tensor = kwargs['text_length']  # (B, N)
-        iob_tags_label: Optional = kwargs['iob_tags_label'] if self.training else None  # (B, N, T)
+        iob_tags_label: Optional[torch.Tensor] = kwargs['iob_tags_label'] if self.training else None  # (B, N, T)
         mask: torch.Tensor = kwargs['mask']  # (B, N, T)
         boxes_coordinate: torch.Tensor = kwargs['boxes_coordinate']  # (B, num_boxes, 8)
 
@@ -142,15 +141,15 @@ class PICKModel(nn.Module):
             output['crf_loss'] = crf_loss
         return output
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Model prints with number of trainable parameters
         """
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
+        params: int = sum(np.prod(p.size()) for p in model_parameters)
         return super().__str__() + '\nTrainable parameters: {}'.format(params)
 
-    def model_parameters(self):
+    def model_parameters(self) -> int:
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
+        params: int = sum(np.prod(p.size()) for p in model_parameters)
         return params

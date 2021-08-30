@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import *
 import json
 from pathlib import Path
@@ -31,17 +29,17 @@ def write_json(content, fname):
 
 
 def inf_loop(data_loader):
-    ''' wrapper function for endless data loader. '''
+    """ wrapper function for endless data loader. """
     for loader in repeat(data_loader):
         yield from loader
 
 
 def iob2entity(tag):
-    '''
+    """
     iob label to entity
     :param tag:
     :return:
-    '''
+    """
     if len(tag) == 1 and tag != 'O':
         raise TypeError('Invalid tag!')
     elif len(tag) == 1 and tag == 'O':
@@ -82,12 +80,12 @@ def text_index_to_str(texts: torch.Tensor, mask: torch.Tensor):
 
 
 def texts_to_union_texts(texts, mask):
-    '''
+    """
 
     :param texts: (B, N, T)
     :param mask: (B, N, T)
     :return:
-    '''
+    """
 
     B, N, T = texts.shape
 
@@ -115,12 +113,12 @@ def texts_to_union_texts(texts, mask):
 
 
 def iob_tags_to_union_iob_tags(iob_tags, mask):
-    '''
+    """
 
     :param iob_tags: (B, N, T)
     :param mask: (B, N, T)
     :return:
-    '''
+    """
 
     B, N, T = iob_tags.shape
 

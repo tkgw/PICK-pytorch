@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/7/2020 5:45 PM
 
@@ -32,7 +31,7 @@ model_urls = {
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    '3x3 convolution with padding'
+    """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
@@ -150,7 +149,7 @@ class ResNet(nn.Module):
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
+        for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes))
 
         return nn.Sequential(*layers)
@@ -173,7 +172,7 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet18(pretrained=False, output_channels=512) -> nn.Module:
+def resnet18(pretrained: bool = False, output_channels: int = 512) -> nn.Module:
     """Constructs a ResNet-18 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -184,7 +183,7 @@ def resnet18(pretrained=False, output_channels=512) -> nn.Module:
     return model
 
 
-def resnet34(pretrained=False, output_channels=512) -> nn.Module:
+def resnet34(pretrained: bool = False, output_channels: int = 512) -> nn.Module:
     """Constructs a ResNet-34 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -195,7 +194,7 @@ def resnet34(pretrained=False, output_channels=512) -> nn.Module:
     return model
 
 
-def resnet50(pretrained=False, output_channels=512) -> nn.Module:
+def resnet50(pretrained: bool = False, output_channels: int = 512) -> nn.Module:
     """Constructs a ResNet-50 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -206,7 +205,7 @@ def resnet50(pretrained=False, output_channels=512) -> nn.Module:
     return model
 
 
-def resnet101(pretrained=False, output_channels=512) -> nn.Module:
+def resnet101(pretrained: bool = False, output_channels: int = 512) -> nn.Module:
     """Constructs a ResNet-101 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -217,7 +216,7 @@ def resnet101(pretrained=False, output_channels=512) -> nn.Module:
     return model
 
 
-def resnet152(pretrained=False, output_channels=512) -> nn.Module:
+def resnet152(pretrained: bool = False, output_channels: int = 512) -> nn.Module:
     """Constructs a ResNet-152 model.
     Args:
       pretrained (bool): If True, returns a model pre-trained on ImageNet

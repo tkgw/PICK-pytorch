@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Author: Wenwen Yu
 # @Created Time: 7/11/2020 10:39 PM
 
@@ -19,13 +18,13 @@ from allennlp.data.dataset_readers.dataset_utils.span_utils import (
     TypedStringSpan
 )
 
-'''
+"""
 Copy-paste from allennlp.training.metrics.span_based_f1_measure
 with modifications:
     * add accuracy meature mEA (mean Entity Accuracy)
     * rename precision, recall, f1 to mEP, mER, mEF
     * numerical stability
-'''
+"""
 
 TAGS_TO_SPANS_FUNCTION_TYPE = Callable[
     [List[str], Optional[List[str]]], List[TypedStringSpan]]  # pylint: disable=invalid-name
