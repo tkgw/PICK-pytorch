@@ -1,24 +1,20 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/12/2020 11:29 PM
-
-import os
 import argparse
 import collections
+import os
 
 import numpy as np
 import torch
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 
-import model.pick as pick_arch_module
-from data_utils import pick_dataset as pick_dataset_module
+import pick.model.pick as pick_arch_module
+from pick.data_utils import pick_dataset as pick_dataset_module
+from pick.data_utils.pick_dataset import BatchCollateFn
+from pick.parse_config import ConfigParser
 
-from data_utils.pick_dataset import BatchCollateFn
-from parse_config import ConfigParser
 from trainer import Trainer
 
-import torch.nn as nn
-import torch.optim as optim
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -34,7 +30,7 @@ def main(config: ConfigParser, local_master: bool, logger=None):
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset) \
         if config['distributed'] else None
 
-    is_shuffle = False if config['distributed'] else True
+    is_shuffle = not config['distributed']
     train_data_loader = config.init_obj('train_data_loader', torch.utils.data.dataloader,
                                         dataset=train_dataset,
                                         sampler=train_sampler,

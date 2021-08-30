@@ -1,12 +1,10 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/7/2020 5:45 PM
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import math
-import torch
+
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 

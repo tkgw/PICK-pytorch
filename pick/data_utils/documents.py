@@ -10,8 +10,8 @@ import cv2
 import numpy as np
 from torchtext.data import Field, RawField
 
-from utils.entities_list import Entities_list
-from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls, entities_vocab_cls
+from ..utils.class_utils import entities_vocab_cls, iob_labels_vocab_cls, keys_vocab_cls
+from ..utils.entities_list import Entities_list
 
 MAX_BOXES_NUM = 70  # limit max number boxes of every documents
 MAX_TRANSCRIPT_LEN = 50  # limit max length text of every box

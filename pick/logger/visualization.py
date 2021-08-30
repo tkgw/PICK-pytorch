@@ -5,14 +5,14 @@ from datetime import datetime
 class TensorboardWriter():
     def __init__(self, log_dir, logger, enabled):
         self.writer = None
-        self.selected_module = ""
+        self.selected_module = ''
 
         if enabled:
             log_dir = str(log_dir)
 
             # Retrieve vizualization writer.
             succeeded = False
-            for module in ["torch.utils.tensorboard", "tensorboardX"]:
+            for module in ['torch.utils.tensorboard', 'tensorboardX']:
                 try:
                     self.writer = importlib.import_module(module).SummaryWriter(log_dir)
                     succeeded = True
@@ -22,9 +22,9 @@ class TensorboardWriter():
                 self.selected_module = module
 
             if not succeeded:
-                message = "Warning: visualization (Tensorboard) is configured to use, but currently not installed on " \
-                          "this machine. Please install TensorboardX with 'pip install tensorboardx', upgrade PyTorch to " \
-                          "version >= 1.1 to use 'torch.utils.tensorboard' or turn off the option in the 'config.json' file."
+                message = 'Warning: visualization (Tensorboard) is configured to use, but currently not installed on ' \
+                          'this machine. Please install TensorboardX with "pip install tensorboardx", upgrade PyTorch to ' \
+                          'version >= 1.1 to use "torch.utils.tensorboard" or turn off the option in the "config.json" file.'
                 logger.warning(message)
 
         self.step = 0

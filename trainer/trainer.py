@@ -1,19 +1,18 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/12/2020 9:50 PM
-
 import os
-import numpy as np
-from numpy import inf
 
+import numpy as np
 import torch
 import torch.distributed as dist
+from numpy import inf
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from utils import inf_loop
-from utils.metrics import MetricTracker, SpanBasedF1MetricTracker
-from logger import TensorboardWriter
-from utils.class_utils import iob_labels_vocab_cls
-from utils.util import iob_tags_to_union_iob_tags
+from pick.logger import TensorboardWriter
+from pick.utils import inf_loop
+from pick.utils.class_utils import iob_labels_vocab_cls
+from pick.utils.metrics import MetricTracker, SpanBasedF1MetricTracker
+from pick.utils.util import iob_tags_to_union_iob_tags
 
 
 class Trainer:
@@ -87,7 +86,7 @@ class Trainer:
 
         if self.distributed:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
-                            find_unused_parameters=True)
+                             find_unused_parameters=True)
 
         self.data_loader = data_loader
         if max_len_step is None:  # max length of iteration step of every epoch
@@ -174,8 +173,8 @@ class Trainer:
             improved = (self.monitor_mode == 'min' and val_monitor_metric_res <= self.monitor_best) or \
                        (self.monitor_mode == 'max' and val_monitor_metric_res >= self.monitor_best)
         except KeyError:
-            self.logger_warning("Warning: Metric '{}' is not found. "
-                                "Model performance monitoring is disabled.".format(self.monitor_metric))
+            self.logger_warning('Warning: Metric '{}' is not found. '
+                                'Model performance monitoring is disabled.'.format(self.monitor_metric))
             self.monitor_mode = 'off'
             improved = False
         if improved:
@@ -194,7 +193,7 @@ class Trainer:
         """
         self.model.train()
         self.train_loss_metrics.reset()
-        ## step iteration start ##
+        # ## step iteration start ##
         for step_idx, input_data_item in enumerate(self.data_loader):
             step_idx += 1
             for key, input_value in input_data_item.items():
@@ -272,7 +271,7 @@ class Trainer:
             if step_idx == self.len_step + 1:
                 break
 
-        ## step iteration end ##
+        # ## step iteration end ##
 
         # {'loss': avg_loss, 'gl_loss': avg_gl_loss, 'crf_loss': avg_crf_loss}
         log = self.train_loss_metrics.result()

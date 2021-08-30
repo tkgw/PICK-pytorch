@@ -1,22 +1,17 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/11/2020 10:39 PM
 
-from typing import *
 from collections import defaultdict
+from typing import Callable, Dict, List, Optional, Set
 
 import torch
-
-from torchtext.vocab import Vocab
 from allennlp.common.checks import ConfigurationError
+from allennlp.data.dataset_readers.dataset_utils.span_utils import (
+    TypedStringSpan, bio_tags_to_spans, bioul_tags_to_spans,
+    bmes_tags_to_spans, iob1_tags_to_spans)
 from allennlp.nn.util import get_lengths_from_binary_sequence_mask
 from allennlp.training.metrics.metric import Metric
-from allennlp.data.dataset_readers.dataset_utils.span_utils import (
-    bio_tags_to_spans,
-    bioul_tags_to_spans,
-    iob1_tags_to_spans,
-    bmes_tags_to_spans,
-    TypedStringSpan
-)
+from torchtext.vocab import Vocab
 
 """
 Copy-paste from allennlp.training.metrics.span_based_f1_measure
@@ -48,7 +43,7 @@ class SpanBasedF1Measure(Metric):
     def __init__(self,
                  vocab: Vocab = None,
                  ignore_classes: List[str] = None,
-                 label_encoding: Optional[str] = "BIO",
+                 label_encoding: Optional[str] = 'BIO',
                  tags_to_spans_function: Optional[TAGS_TO_SPANS_FUNCTION_TYPE] = None) -> None:
         """
         Parameters
@@ -84,7 +79,7 @@ class SpanBasedF1Measure(Metric):
                 'Set "label_encoding=None" explicitly to enable tags_to_spans_function.'
             )
         if label_encoding:
-            if label_encoding not in ["BIO", "IOB1", "BIOUL", "BMES"]:
+            if label_encoding not in ['BIO', 'IOB1', 'BIOUL', 'BMES']:
                 raise ConfigurationError("Unknown label encoding - expected 'BIO', 'IOB1', 'BIOUL', 'BMES'.")
         elif tags_to_spans_function is None:
             raise ConfigurationError(
@@ -104,7 +99,7 @@ class SpanBasedF1Measure(Metric):
 
         self.mapped_class = []
         for k, v in self._label_vocabulary.stoi.items():
-            if k == '<pad>' or k == '<unk>':
+            if k in {'<pad>', '<unk>'}:
                 self.mapped_class.append(self._label_vocabulary.stoi['O'])
             else:
                 self.mapped_class.append(v)
@@ -141,8 +136,8 @@ class SpanBasedF1Measure(Metric):
                                                                              mask, prediction_map)
         num_classes = predictions.size(-1)
         if (gold_labels >= num_classes).any():
-            raise ConfigurationError("A gold label passed to SpanBasedF1Measure contains an "
-                                     "id >= {}, the number of classes.".format(num_classes))
+            raise ConfigurationError('A gold label passed to SpanBasedF1Measure contains an '
+                                     'id >= {}, the number of classes.'.format(num_classes))
 
         sequence_lengths = get_lengths_from_binary_sequence_mask(mask).long()
         argmax_predictions = predictions.max(-1)[1]
@@ -180,13 +175,13 @@ class SpanBasedF1Measure(Metric):
             if self._label_encoding is None and self._tags_to_spans_function:
                 tags_to_spans_function = self._tags_to_spans_function
             # Search by `label_encoding`.
-            elif self._label_encoding == "BIO":
+            elif self._label_encoding == 'BIO':
                 tags_to_spans_function = bio_tags_to_spans
-            elif self._label_encoding == "IOB1":
+            elif self._label_encoding == 'IOB1':
                 tags_to_spans_function = iob1_tags_to_spans
-            elif self._label_encoding == "BIOUL":
+            elif self._label_encoding == 'BIOUL':
                 tags_to_spans_function = bioul_tags_to_spans
-            elif self._label_encoding == "BMES":
+            elif self._label_encoding == 'BMES':
                 tags_to_spans_function = bmes_tags_to_spans
 
             predicted_spans = tags_to_spans_function(predicted_string_labels, self._ignore_classes)
@@ -231,7 +226,7 @@ class SpanBasedF1Measure(Metric):
         A ``List[TypedStringSpan]`` with continued arguments replaced with a single span.
         """
         span_set: Set[TypedStringSpan] = set(spans)
-        continued_labels: List[str] = [label[2:] for (label, span) in span_set if label.startswith("C-")]
+        continued_labels: List[str] = [label[2:] for (label, span) in span_set if label.startswith('C-')]
         for label in continued_labels:
             continued_spans = {span for span in span_set if label in span[0]}
 
@@ -266,10 +261,10 @@ class SpanBasedF1Measure(Metric):
             precision, recall, f1_measure = self._compute_metrics(self._true_positives[tag],
                                                                   self._false_positives[tag],
                                                                   self._false_negatives[tag])
-            precision_key = "mEP" + "-" + tag
-            recall_key = "mER" + "-" + tag
-            f1_key = "mEF" + "-" + tag
-            accuracy_key = "mEA" + "-" + tag
+            precision_key = 'mEP' + '-' + tag
+            recall_key = 'mER' + '-' + tag
+            f1_key = 'mEF' + '-' + tag
+            accuracy_key = 'mEA' + '-' + tag
             all_metrics[precision_key] = precision
             all_metrics[recall_key] = recall
             all_metrics[f1_key] = f1_measure
@@ -280,14 +275,14 @@ class SpanBasedF1Measure(Metric):
         precision, recall, f1_measure = self._compute_metrics(sum(self._true_positives.values()),
                                                               sum(self._false_positives.values()),
                                                               sum(self._false_negatives.values()))
-        all_metrics["mEP-overall"] = precision
-        all_metrics["mER-overall"] = recall
-        all_metrics["mEF-overall"] = f1_measure
+        all_metrics['mEP-overall'] = precision
+        all_metrics['mER-overall'] = recall
+        all_metrics['mEF-overall'] = f1_measure
 
         if sum(self._total.values()) != 0:
-            all_metrics["mAE-overall"] = sum(self._true_positives.values()) / sum(self._total.values())
+            all_metrics['mAE-overall'] = sum(self._true_positives.values()) / sum(self._total.values())
         else:
-            all_metrics["mAE-overall"] = 0
+            all_metrics['mAE-overall'] = 0
 
         if reset:
             self.reset()

@@ -7,10 +7,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from ..utils.class_utils import iob_labels_vocab_cls, keys_vocab_cls
+from .decoder import Decoder
 from .encoder import Encoder
 from .graph import GLCN
-from .decoder import Decoder
-from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls
 
 
 class PICKModel(nn.Module):

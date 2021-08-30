@@ -13,10 +13,9 @@ from overrides import overrides
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+from ..utils.class_utils import iob_labels_vocab_cls, keys_vocab_cls
 from . import documents
 from .documents import Document
-from utils.class_utils import (entities_vocab_cls, iob_labels_vocab_cls,
-                               keys_vocab_cls)
 
 
 class PICKDataset(Dataset):

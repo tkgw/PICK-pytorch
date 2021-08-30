@@ -2,18 +2,16 @@
 # @Created Time: 7/13/2020 10:26 PM
 
 import argparse
-import torch
-from tqdm import tqdm
 from pathlib import Path
 
-from torch.utils.data.dataloader import DataLoader
+import torch
 from allennlp.data.dataset_readers.dataset_utils.span_utils import bio_tags_to_spans
+from torch.utils.data.dataloader import DataLoader
+from tqdm import tqdm
 
-from parse_config import ConfigParser
-import model.pick as pick_arch_module
-from data_utils.pick_dataset import PICKDataset
-from data_utils.pick_dataset import BatchCollateFn
-from utils.util import iob_index_to_str, text_index_to_str
+import pick.model.pick as pick_arch_module
+from pick.data_utils.pick_dataset import BatchCollateFn, PICKDataset
+from pick.utils.util import iob_index_to_str, text_index_to_str
 
 
 def main(args):
@@ -46,13 +44,13 @@ def main(args):
 
     # predict and save to file
     with torch.no_grad():
-        for step_idx, input_data_item in tqdm(enumerate(test_data_loader)):
+        for _, input_data_item in tqdm(enumerate(test_data_loader)):
             for key, input_value in input_data_item.items():
                 if input_value is not None and isinstance(input_value, torch.Tensor):
                     input_data_item[key] = input_value.to(device)
 
             # For easier debug.
-            image_names = input_data_item["filenames"]
+            # image_names = input_data_item['filenames']
 
             output = pick_model(**input_data_item)
             logits = output['logits']  # (B, N*T, out_dim)
@@ -63,7 +61,7 @@ def main(args):
             # List[(List[int], torch.Tensor)]
             best_paths = pick_model.decoder.crf_layer.viterbi_tags(logits, mask=new_mask, logits_batch_first=True)
             predicted_tags = []
-            for path, score in best_paths:
+            for path, _ in best_paths:
                 predicted_tags.append(path)
 
             # convert iob index to iob string

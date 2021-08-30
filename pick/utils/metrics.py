@@ -1,13 +1,12 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/11/2020 10:02 PM
+from typing import Dict
 
-from typing import *
 import numpy as np
 import pandas as pd
-
-import torch
-from .span_based_f1 import SpanBasedF1Measure
 import tabulate
+
+from .span_based_f1 import SpanBasedF1Measure
 
 
 class MetricTracker:

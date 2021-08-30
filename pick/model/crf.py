@@ -1,12 +1,11 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 10:39 PM
 
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
-import torch
-
-from allennlp.common.checks import ConfigurationError
 import allennlp.nn.util as util
+import torch
+from allennlp.common.checks import ConfigurationError
 
 """
 Copy-paste from allennlp.modules.conditional_random_field

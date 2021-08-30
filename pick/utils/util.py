@@ -1,13 +1,12 @@
-from typing import *
 import json
-from pathlib import Path
-from itertools import repeat
 from collections import OrderedDict
+from itertools import repeat
+from pathlib import Path
+from typing import List
 
 import torch
 
-from .class_utils import keys_vocab_cls, iob_labels_vocab_cls
-from data_utils import documents
+from .class_utils import iob_labels_vocab_cls, keys_vocab_cls
 
 
 def ensure_dir(dirname):
@@ -55,7 +54,7 @@ def iob_index_to_str(tags: List[List[int]]):
         decoded_tags = []
         for tag in doc:
             s = iob_labels_vocab_cls.itos[tag]
-            if s == '<unk>' or s == '<pad>':
+            if s in {'<unk>', '<pad>'}:
                 s = 'O'
             decoded_tags.append(s)
         decoded_tags_list.append(decoded_tags)
@@ -72,7 +71,7 @@ def text_index_to_str(texts: torch.Tensor, mask: torch.Tensor):
         decoded_text = []
         for text_index in union_texts[i]:
             text_str = keys_vocab_cls.itos[text_index]
-            if text_str == '<unk>' or text_str == '<pad>':
+            if text_str in {'<unk>', '<pad>'}:
                 text_str = 'O'
             decoded_text.append(text_str)
         decoded_tags_list.append(decoded_text)

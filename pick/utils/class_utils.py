@@ -12,8 +12,7 @@ from . import entities_list
 class ClassVocab(Vocab):
 
     def __init__(self, classes: Union[str, Path, List[str]], specials: Tuple[str, ...] = ('<pad>', '<unk>'), **kwargs: Any) -> None:
-        """
-        convert key to index(stoi), and get key string by index(itos)
+        """convert key to index(stoi), and get key string by index(itos)
         :param classes: list or str, key string or entity list
         :param specials: list, special tokens except <unk> (default: {['<pad>', '<unk>']})
         :param kwargs:
@@ -37,8 +36,7 @@ class ClassVocab(Vocab):
 
 
 def entities2iob_labels(entities: List[str]) -> List[str]:
-    """
-    get all iob string label by entities
+    """get all iob string label by entities
     :param entities:
     :return:
     """

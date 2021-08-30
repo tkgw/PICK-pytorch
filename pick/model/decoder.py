@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from ..utils.class_utils import iob_labels_vocab_cls, keys_vocab_cls
 from .crf import ConditionalRandomField
-from utils.class_utils import keys_vocab_cls, iob_labels_vocab_cls
 
 logger = logging.getLogger('PICK')
 
@@ -25,8 +25,7 @@ class MLPLayer(nn.Module):
                  layer_norm: bool = False,
                  dropout: Optional[float] = 0.0,
                  activation: Optional[str] = 'relu') -> None:
-        """
-        transform output of LSTM layer to logits, as input of crf layers
+        """transform output of LSTM layer to logits, as input of crf layers
         :param in_dim:
         :param out_dim:
         :param hidden_dims:
