@@ -63,7 +63,7 @@ class Trainer:
             self.monitor_best = 0
         else:
             self.monitor_mode, self.monitor_metric = self.monitor.split()
-            assert self.monitor_mode in ['min', 'max']
+            assert self.monitor_mode in {'min', 'max'}
 
             self.monitor_best = inf if self.monitor_mode == 'min' else -inf
             self.early_stop = cfg_trainer.get('early_stop', inf)

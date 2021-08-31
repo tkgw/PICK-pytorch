@@ -79,7 +79,7 @@ class SpanBasedF1Measure(Metric):
                 'Set "label_encoding=None" explicitly to enable tags_to_spans_function.'
             )
         if label_encoding:
-            if label_encoding not in ['BIO', 'IOB1', 'BIOUL', 'BMES']:
+            if label_encoding not in {'BIO', 'IOB1', 'BIOUL', 'BMES'}:
                 raise ConfigurationError("Unknown label encoding - expected 'BIO', 'IOB1', 'BIOUL', 'BMES'.")
         elif tags_to_spans_function is None:
             raise ConfigurationError(

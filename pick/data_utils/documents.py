@@ -25,6 +25,9 @@ IOBTagsField.vocab = iob_labels_vocab_cls
 
 
 class Document:
+    training: bool
+    resized_image_size: Tuple[int, int]
+    image_filename: str
     whole_image: np.ndarray
     text_segments: Tuple[np.ndarray, np.ndarray]
     boxes_coordinate: List[np.ndarray]
@@ -32,6 +35,8 @@ class Document:
     mask: np.ndarray
     boxes_num: int
     transcript_len: int
+    iob_tagging_type: str
+    iob_tags_label: Optional[np.ndarray]
     image_index: Optional[int]
 
     def __init__(self, boxes_and_transcripts_file: Path, image_file: Path,
@@ -52,7 +57,7 @@ class Document:
         """
         self.resized_image_size = resized_image_size
         self.training = training
-        assert iob_tagging_type in ['box_level', 'document_level', 'box_and_within_box_level'], \
+        assert iob_tagging_type in {'box_level', 'document_level', 'box_and_within_box_level'}, \
             'iob tagging type {} is not supported'.format(iob_tagging_type)
         self.iob_tagging_type = iob_tagging_type
 
@@ -208,6 +213,7 @@ class Document:
         rect_output_i = min_area_boxes[i]
         center_i = rect_output_i[0]
         width_i, height_i = rect_output_i[1]
+        relation_features_i = relation_features[i]
         for j in range(boxes_num):
             transcript_j = transcripts[j]
             rect_output_j = min_area_boxes[j]
@@ -215,18 +221,18 @@ class Document:
             width_j, height_j = rect_output_j[1]
 
             # Center distances of boxes on x-axis.
-            relation_features[i, j, 0] = np.abs(center_i[0] - center_j[0])  # x_ij
+            relation_features_i[j, 0] = np.abs(center_i[0] - center_j[0])  # x_ij
 
             # Center distances of boxes on y-axis.
-            relation_features[i, j, 1] = np.abs(center_i[1] - center_j[1])  # y_ij
+            relation_features_i[j, 1] = np.abs(center_i[1] - center_j[1])  # y_ij
 
-            relation_features[i, j, 2] = width_i / height_i  # w_i/h_i
+            relation_features_i[j, 2] = width_i / height_i  # w_i/h_i
 
-            relation_features[i, j, 3] = height_j / height_i  # h_j/h_i
+            relation_features_i[j, 3] = height_j / height_i  # h_j/h_i
 
-            relation_features[i, j, 4] = width_j / height_i  # w_j/h_i
+            relation_features_i[j, 4] = width_j / height_i  # w_j/h_i
 
-            relation_features[i, j, 5] = len(transcript_j) / len(transcript_i)  # T_j/T_i
+            relation_features_i[j, 5] = len(transcript_j) / len(transcript_i)  # T_j/T_i
 
 
 def read_gt_file_with_box_entity_type(filepath: str) -> List[Tuple[int, List[float], str, str]]:
@@ -240,7 +246,7 @@ def read_gt_file_with_box_entity_type(filepath: str) -> List[Tuple[int, List[flo
     matches = re.finditer(regex, document_text, re.MULTILINE)
 
     res: List[Tuple[int, List[float], str, str]] = []
-    for _, match in enumerate(matches, start=1):
+    for match in matches:
         index = int(match.group(1))
         points = [float(match.group(i)) for i in range(2, 10)]
         transcription = str(match.group(10))
@@ -260,7 +266,7 @@ def read_ocr_file_without_box_entity_type(filepath: str) -> List[Tuple[int, List
     matches = re.finditer(regex, document_text, re.MULTILINE)
 
     res: List[Tuple[int, List[float], str]] = []
-    for _, match in enumerate(matches, start=1):
+    for match in matches:
         index = int(match.group(1))
         points = [float(match.group(i)) for i in range(2, 10)]
         transcription = str(match.group(10))

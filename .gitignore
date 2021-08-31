@@ -94,9 +94,6 @@ ENV/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
-
 # mypy
 .mypy_cache/
 
@@ -108,6 +105,9 @@ saved/
 .vscode/
 .idea/
 __MACOSX/
-/data/train_tickets/
-/config_train_ticket.json
-/data/train_tickets.zip
+
+data/
+data/train_tickets/
+data/train_tickets.zip
+
+output/

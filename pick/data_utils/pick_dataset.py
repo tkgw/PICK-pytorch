@@ -14,7 +14,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from ..utils.class_utils import iob_labels_vocab_cls, keys_vocab_cls
-from . import documents
 from .documents import Document
 
 
@@ -125,11 +124,11 @@ class PICKDataset(Dataset):
             # TODO add read and save cache function, to speed up data loaders
 
             if self.training:
-                document = documents.Document(boxes_and_transcripts_file, image_file, self.resized_image_size,
-                                              self.iob_tagging_type, entities_file, training=self.training)
+                document = Document(boxes_and_transcripts_file, image_file, self.resized_image_size,
+                                    self.iob_tagging_type, entities_file, training=self.training)
             else:
-                document = documents.Document(boxes_and_transcripts_file, image_file, self.resized_image_size,
-                                              image_index=index, training=self.training)
+                document = Document(boxes_and_transcripts_file, image_file, self.resized_image_size,
+                                    image_index=index, training=self.training)
             return document
         except Exception as e:
             if self.ignore_error:
