@@ -93,11 +93,11 @@ class PICKModel(nn.Module):
         text_length: torch.Tensor = kwargs['text_length']  # (B, N)
         iob_tags_label: Optional[torch.Tensor] = kwargs['iob_tags_label'] if self.training else None  # (B, N, T)
         mask: torch.Tensor = kwargs['mask']  # (B, N, T)
-        boxes_coordinate: torch.Tensor = kwargs['boxes_coordinate']  # (B, num_boxes, 8)
+        boxes_coordinate: torch.Tensor = kwargs['boxes_coordinate']  # (B, N, 8)
 
         # ##### Forward Begin #####
         # ### Encoder module ###
-        # word embedding
+        # word embedding, (B, N, T, D)
         text_emb = self.word_emb(text_segments)
 
         # src_key_padding_mask is text padding mask, True is padding value (B*N, T)
