@@ -5,7 +5,7 @@ import argparse
 import collections
 from pathlib import Path
 
-import model.pick as pick_arch
+import pick.model.pick as pick_arch
 import pandas as pd
 import torch
 from torch.utils.data.dataloader import DataLoader
@@ -18,7 +18,7 @@ from pick.model.graph import GLCN
 from pick.parse_config import ConfigParser
 
 
-def test_glcn_model():
+def test_glcn_model() -> None:
     batch_size, node_nums, in_dim, out_dim = 2, 5, 16, 32
     glcn = GLCN(in_dim, out_dim)
     x = torch.randn(batch_size, node_nums, in_dim)
@@ -29,7 +29,7 @@ def test_glcn_model():
     print(x.shape, soft_adj.shape, gl_loss.shape)
 
 
-def test_model():
+def test_model() -> None:
     args = argparse.ArgumentParser(description='PICK parameters')
     args.add_argument('-c', '--config', default='../config.json', type=str,
                       help='config file path (default: None)')
@@ -45,14 +45,14 @@ def test_model():
     logger.info(model)
 
 
-def test_resnet():
+def test_resnet() -> None:
     model = resnet.resnet50()
     x = torch.randn(2, 3, 64, 128)
     x = model(x)
     print(x.shape)
 
 
-def test_datasets():
+def test_datasets() -> None:
     filename = Path(__file__).parent.parent.joinpath('data/data_examples_root/train_samples_list.csv').as_posix()
     dataset = PICKDataset(files_name=filename,
                           iob_tagging_type='box_level',
@@ -71,7 +71,7 @@ def test_datasets():
         print(whole_image.shape)
 
 
-def test_model_forward():
+def test_model_forward() -> None:
     # torch.backends.cudnn.benchmark = False
     args = argparse.ArgumentParser(description='PICK parameters')
     args.add_argument('-c', '--config', default='../config.json', type=str,
@@ -123,16 +123,16 @@ def test_model_forward():
         print(logits.shape)
 
 
-def test_read_csv():
+def test_read_csv() -> None:
     filename = r'/home/Wen/data/code/PICK/PICK-pytorch/data/data_examples_root/train_samples_list.csv'
     # filename = r'/home/Wen/data/code/PICK/PICK-pytorch/data/data_examples_root/baseline_test.csv'
-    res = pd.read_csv(filename, header=None,
-                      names=['index', 'document_class', 'file_name'])
+    res: pd.DataFrame = pd.read_csv(filename, header=None,
+                                    names=['index', 'document_class', 'file_name'])
     item = res.iloc[0]
     print(item)
 
 
-def test_metrics():
+def test_metrics() -> None:
     import numpy as np
     keys = ('loss', 'gl_loss', 'crf_loss')
     columns = ['total', 'counts', 'average']
