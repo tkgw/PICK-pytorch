@@ -260,7 +260,7 @@ class GLCN(nn.Module):
     def forward(self, x: Tensor, rel_features: Tensor, adj: Tensor, box_num: Optional[Tensor], **kwargs: Any) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """
 
-        :param x: nodes embedding, (B*N, D)
+        :param x: nodes embedding, (B, N, D)
         :param rel_features: relation embedding, (B, N, N, 6)
         :param adj: default adjacent matrix, (B, N, N)
         :param box_num: (B, 1)
