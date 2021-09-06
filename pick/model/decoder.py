@@ -91,7 +91,7 @@ class BiLSTMLayer(nn.Module):
         # B*N, T, hidden_size
         x_seq, sorted_lengths, invert_order = self.sort_tensor(x_seq, lengths)
         packed_x = nn.utils.rnn.pack_padded_sequence(x_seq, lengths=sorted_lengths.cpu(), batch_first=True)
-        self.lstm.flatten_parameters()
+        self.lstm.flatten_parameters()  # ?
         output, _ = self.lstm(packed_x)
         output, _ = nn.utils.rnn.pad_packed_sequence(output, batch_first=True,
                                                      padding_value=keys_vocab_cls.stoi['<pad>'])
@@ -123,14 +123,14 @@ class UnionLayer(nn.Module):
                 new_tag, (B, max_doc_seq_len)
         """
         B, N, T, D = x.shape
-        x = x.reshape(B, N * T, -1)
+        x = x.reshape(B, N * T, D)
         mask = mask.reshape(B, N * T)
 
         # combine x and x_gcn firstly
         # (B, N, T, D)
         x_gcn = x_gcn.unsqueeze(2).expand(B, N, T, -1)
         # (B, N*T, D)
-        x_gcn = x_gcn.reshape(B, N * T, -1)
+        x_gcn = x_gcn.reshape(B, N * T, D)
         # (B, N*T, D)
         x = x_gcn + x
 
