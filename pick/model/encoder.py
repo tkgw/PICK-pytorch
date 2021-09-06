@@ -77,8 +77,8 @@ class Encoder(nn.Module):
 
         # Compute the positional encodings once in log space.
         position_embedding = torch.zeros(max_len, char_embedding_dim)
-        position = torch.arange(0, max_len).unsqueeze(1).float()
-        div_term = torch.exp(torch.arange(0, char_embedding_dim, 2).float() *
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, char_embedding_dim, 2, dtype=torch.float) *
                              -(math.log(10000.0) / char_embedding_dim))
         position_embedding[:, 0::2] = torch.sin(position * div_term)
         position_embedding[:, 1::2] = torch.cos(position * div_term)
@@ -102,7 +102,6 @@ class Encoder(nn.Module):
             if provided, specified padding elements in the key will be ignored by the attention.
             This is an binary mask. When the value is True, the corresponding value on the attention layer of Transformer
             will be filled with -inf.
-        need_weights: output attn_output_weights.
         :return: set of nodes X, shape is (B*N, T, D)
         """
 
@@ -118,22 +117,18 @@ class Encoder(nn.Module):
 
         # generate rois for roi pooling, rois shape is (B, N, 5), 5 means (batch_index, x0, y0, x1, y1)
         rois_batch = torch.zeros(B, N, 5, device=images.device)
-        # Loop on the every image.
         for i in range(B):  # (B, N, 8)
-            # (N, 8)
-            doc_boxes = boxes_coordinate[i]
-            # (N, 4)
-            pos = torch.stack([doc_boxes[:, 0], doc_boxes[:, 1], doc_boxes[:, 4], doc_boxes[:, 5]], dim=1)
-            rois_batch[i, :, 1:5] = pos
             rois_batch[i, :, 0] = i
+        rois_batch[:, :, 1:3] = boxes_coordinate[:, :, 0:2]
+        rois_batch[:, :, 3:5] = boxes_coordinate[:, :, 4:6]
 
         spatial_scale = float(H / origin_H)
         # use roi pooling get image segments
         # (B*N, C, roi_pooling_size, roi_pooling_size)
         if self.roi_pooling_mode == 'roi_align':
-            image_segments = roi_align(images, rois_batch.view(-1, 5), self.roi_pooling_size, spatial_scale)
+            image_segments = roi_align(images, rois_batch.view(B * N, 5), self.roi_pooling_size, spatial_scale)
         else:
-            image_segments = roi_pool(images, rois_batch.view(-1, 5), self.roi_pooling_size, spatial_scale)
+            image_segments = roi_pool(images, rois_batch.view(B * N, 5), self.roi_pooling_size, spatial_scale)
 
         # (B*N, D, 1, 1)
         image_segments = F.relu(self.bn(self.conv(image_segments)))
@@ -144,7 +139,7 @@ class Encoder(nn.Module):
         image_segments = image_segments.unsqueeze(dim=1)
 
         # add positional embedding
-        transcripts_segments = self.pe_dropout(transcripts + self.position_embedding[:, :, :transcripts.size(2), :])
+        transcripts_segments = self.pe_dropout(transcripts + self.position_embedding[:, :, :T, :])
         # (B*N, T ,D)
         transcripts_segments = transcripts_segments.reshape(B * N, T, D)
 
