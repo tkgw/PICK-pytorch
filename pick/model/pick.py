@@ -99,6 +99,7 @@ class PICKModel(nn.Module):
         # ### Encoder module ###
         # word embedding, (B, N, T, D)
         text_emb = self.word_emb(text_segments)
+        B, N, T, D = text_emb.shape
 
         # src_key_padding_mask is text padding mask, True is padding value (B*N, T)
         # graph_node_mask is mask for graph, True is valid node, (B*N, T)
@@ -117,13 +118,12 @@ class PICKModel(nn.Module):
         graph_node_mask = graph_node_mask.any(dim=-1, keepdim=True)
         # (B*N, D), filter out not valid node
         x_gcn = x_gcn * graph_node_mask.byte()
+        # (B, N, D)
+        x_gcn = x_gcn.reshape(B, N, D)
 
         # initial adjacent matrix (B, N, N)
-        B, N, T = mask.shape
         init_adj = torch.ones((B, N, N), device=text_emb.device)
         boxes_num = mask[:, :, 0].sum(dim=1, keepdim=True)  # (B, 1)
-        # (B, N, D)
-        x_gcn = x_gcn.reshape(B, N, -1)
         # (B, N, D), (B, N, N), (B,)
         x_gcn, soft_adj, gl_loss = self.graph(x_gcn, relation_features, init_adj, boxes_num)
         adj = soft_adj * init_adj
