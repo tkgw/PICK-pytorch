@@ -305,7 +305,8 @@ def normalize_relation_features(feat: np.ndarray, width: int, height: int) -> np
         max_value = np.max(feat_ij)
         min_value = np.min(feat_ij)
         if max_value != min_value:
-            feat[:, :, i] = feat[:, :, i] - min_value / (max_value - min_value)
+            feat[:, :, i] = feat[:, :, i] - min_value / (max_value - min_value)  # ?
+            # feat[:, :, i] = (feat[:, :, i] - min_value) / (max_value - min_value)
     return feat
 
 
