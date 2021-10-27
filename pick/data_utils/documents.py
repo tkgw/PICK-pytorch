@@ -146,6 +146,7 @@ class Document:
             if self.training:
                 # assign iob label to input text through exactly match way, this process needs entity-level label
                 if self.iob_tagging_type != 'box_level':
+                    assert entities_file is not None
                     with entities_file.open() as f:
                         entities = json.load(f)
 
@@ -198,7 +199,7 @@ class Document:
             boxes_num: int, i: int,
             min_area_boxes: List[Tuple[Tuple[int, int], Tuple[int, int], float]],
             relation_features: np.ndarray,
-            transcripts: List[str]):
+            transcripts: List[str]) -> None:
         """
         calculate node i and other nodes' initial relation features.
         :param boxes_num:

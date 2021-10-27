@@ -2,26 +2,26 @@ import json
 from collections import OrderedDict
 from itertools import repeat
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import torch
 
 from .class_utils import iob_labels_vocab_cls, keys_vocab_cls
 
 
-def ensure_dir(dirname):
+def ensure_dir(dirname: str) -> None:
     dirname = Path(dirname)
     if not dirname.is_dir():
         dirname.mkdir(parents=True, exist_ok=False)
 
 
-def read_json(fname):
+def read_json(fname: str) -> Any:
     fname = Path(fname)
     with fname.open('rt') as handle:
         return json.load(handle, object_hook=OrderedDict)
 
 
-def write_json(content, fname):
+def write_json(content: Any, fname: str) -> None:
     fname = Path(fname)
     with fname.open('wt') as handle:
         json.dump(content, handle, indent=4, sort_keys=False)
