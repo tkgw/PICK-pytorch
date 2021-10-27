@@ -3,6 +3,7 @@
 
 import argparse
 from pathlib import Path
+from typing import Any, Dict
 
 import torch
 from allennlp.data.dataset_readers.dataset_utils.span_utils import bio_tags_to_spans
@@ -14,9 +15,9 @@ from pick.data_utils.pick_dataset import BatchCollateFn, PICKDataset
 from pick.utils.util import iob_index_to_str, text_index_to_str
 
 
-def main(args):
+def main(args: argparse.Namespace):
     device = torch.device(f'cuda:{args.gpu}' if args.gpu != -1 else 'cpu')
-    checkpoint = torch.load(args.checkpoint, map_location=device)
+    checkpoint: Dict[str, Any] = torch.load(args.checkpoint, map_location=device)
 
     config = checkpoint['config']
     state_dict = checkpoint['state_dict']
@@ -44,7 +45,7 @@ def main(args):
 
     # predict and save to file
     with torch.no_grad():
-        for _, input_data_item in tqdm(enumerate(test_data_loader)):
+        for input_data_item in tqdm(test_data_loader):
             for key, input_value in input_data_item.items():
                 if input_value is not None and isinstance(input_value, torch.Tensor):
                     input_data_item[key] = input_value.to(device)
@@ -100,5 +101,4 @@ if __name__ == '__main__':
                       help='GPU id to use. (default: -1, cpu)')
     args.add_argument('--bs', '--batch_size', default=1, type=int,
                       help='batch size (default: 1)')
-    args = args.parse_args()
-    main(args)
+    main(args.parse_args())
