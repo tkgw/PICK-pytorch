@@ -2,11 +2,11 @@
 # @Created Time: 7/7/2020 8:34 PM
 
 import math
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch import Tensor
 
 from pick.data_utils import documents
@@ -64,6 +64,7 @@ class GraphLearningLayer(nn.Module):
 
         gl_loss: Optional[Tensor] = None
         if self.training:
+            assert box_num is not None
             gl_loss = self._graph_learning_loss(x_hat, soft_adj, box_num)
 
         return soft_adj, gl_loss
