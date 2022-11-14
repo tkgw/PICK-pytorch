@@ -186,7 +186,7 @@ class GCNLayer(nn.Module):
         nn.init.uniform_(self.bias_h, a=0, b=1)
         nn.init.kaiming_uniform_(self.w_node, a=math.sqrt(5))
 
-    def forward(self, x: Tensor, alpha: Tensor, adj: Tensor, box_num: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor, alpha: Tensor, adj: Tensor) -> Tuple[Tensor, Tensor]:
         """
 
         :param x: nodes set (node embedding), (B, N, in_dim)
@@ -270,6 +270,6 @@ class GLCN(nn.Module):
 
         adj = adj * soft_adj
         for gcn_layer in self.gcn:
-            x, alpha = gcn_layer(x, alpha, adj, box_num)
+            x, alpha = gcn_layer(x, alpha, adj)
 
         return x, soft_adj, gl_loss

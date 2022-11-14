@@ -1,7 +1,7 @@
 # @Author: Wenwen Yu
 # @Created Time: 7/8/2020 10:39 PM
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import allennlp.nn.util as util
 import torch
@@ -39,7 +39,7 @@ def allowed_transitions(constraint_type: str, labels: Dict[int, str]) -> List[Tu
     end_tag = num_labels + 1
     labels_with_boundaries = list(labels.items()) + [(start_tag, 'START'), (end_tag, 'END')]
 
-    allowed = []
+    allowed: List[Tuple[int, int]] = []
     for from_label_index, from_label in labels_with_boundaries:
         if from_label in ('START', 'END'):
             from_tag = from_label
@@ -176,7 +176,7 @@ class ConditionalRandomField(torch.nn.Module):
 
     def __init__(self,
                  num_tags: int,
-                 constraints: List[Tuple[int, int]] = None,
+                 constraints: Optional[List[Tuple[int, int]]] = None,
                  include_start_end_transitions: bool = True) -> None:
         super().__init__()
         self.num_tags = num_tags
@@ -204,13 +204,13 @@ class ConditionalRandomField(torch.nn.Module):
 
         self.reset_parameters()
 
-    def reset_parameters(self):
+    def reset_parameters(self) -> None:
         torch.nn.init.xavier_normal_(self.transitions)
         if self.include_start_end_transitions:
             torch.nn.init.normal_(self.start_transitions)
             torch.nn.init.normal_(self.end_transitions)
 
-    def _input_likelihood(self, logits: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def _input_likelihood(self, logits: torch.Tensor, mask: torch.ByteTensor) -> torch.Tensor:
         """
         Computes the (batch_size,) denominator term for the log-likelihood, which is the
         sum of the likelihoods across all possible state sequences.
@@ -259,7 +259,7 @@ class ConditionalRandomField(torch.nn.Module):
     def _joint_likelihood(self,
                           logits: torch.Tensor,
                           tags: torch.Tensor,
-                          mask: torch.LongTensor) -> torch.Tensor:
+                          mask: torch.ByteTensor) -> torch.Tensor:
         """
         Computes the numerator term for the log-likelihood, which is just score(inputs, tags)
         """
@@ -271,6 +271,7 @@ class ConditionalRandomField(torch.nn.Module):
         tags = tags.transpose(0, 1).contiguous()
 
         # Start with the transition scores from start_tag to the first tag in each input
+        score: Union[float, torch.Tensor]
         if self.include_start_end_transitions:
             score = self.start_transitions.index_select(0, tags[0])
         else:
@@ -314,7 +315,10 @@ class ConditionalRandomField(torch.nn.Module):
     def forward(self,
                 inputs: torch.Tensor,
                 tags: torch.Tensor,
-                mask: torch.ByteTensor = None, input_batch_first=False, keepdim=False) -> torch.Tensor:
+                mask: Optional[torch.ByteTensor] = None,
+                input_batch_first: bool = False,
+                keepdim: bool = False,
+                ) -> torch.Tensor:
         """
         Computes the log likelihood. inputs, tags, mask are assumed to be batch first
         """
@@ -328,7 +332,7 @@ class ConditionalRandomField(torch.nn.Module):
         # pylint: disable=arguments-differ
         if mask is None:
             mask = torch.ones(*tags.size(), dtype=torch.long)
-
+        assert mask is not None
         log_denominator = self._input_likelihood(inputs, mask)
         log_numerator = self._joint_likelihood(inputs, tags, mask)
 
@@ -339,7 +343,8 @@ class ConditionalRandomField(torch.nn.Module):
 
     def viterbi_tags(self,
                      logits: torch.Tensor,
-                     mask: torch.Tensor, logits_batch_first=False) -> List[Tuple[List[int], float]]:
+                     mask: torch.Tensor,
+                     logits_batch_first: bool = False) -> List[Tuple[List[int], float]]:
         """
         Uses viterbi algorithm to find most likely tags for the given inputs.
         If constraints are applied, disallows all other transitions.

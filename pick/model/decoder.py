@@ -24,7 +24,7 @@ class MLPLayer(nn.Module):
                  hidden_dims: Optional[List[int]] = None,
                  layer_norm: bool = False,
                  dropout: Optional[float] = 0.0,
-                 activation: Optional[str] = 'relu') -> None:
+                 activation: str = 'relu') -> None:
         """transform output of LSTM layer to logits, as input of crf layers
         :param in_dim:
         :param out_dim:
@@ -35,9 +35,9 @@ class MLPLayer(nn.Module):
         """
         super().__init__()
         layers: List[nn.Module] = []
-        activation_layer = {
+        activation_layer: Dict[str, nn.Module] = {
             'relu': nn.ReLU(),
-            'leaky_relu': nn.LeakyReLU
+            'leaky_relu': nn.LeakyReLU(),
         }
 
         if hidden_dims:
@@ -107,7 +107,7 @@ class UnionLayer(nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
-    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor) -> Tuple:
+    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor) -> Tuple[Tensor, Tensor, Tensor, Optional[Tensor]]:
         """
         For a document, we merge all non-paddding (valid) x and x_gcn value together in a document-level format,
         then feed it into crf layer.
@@ -179,13 +179,13 @@ class UnionLayer(nn.Module):
 
 class Decoder(nn.Module):
 
-    def __init__(self, bilstm_kwargs: dict, mlp_kwargs: dict, crf_kwargs: dict) -> None:
+    def __init__(self, bilstm_kwargs: Dict[str, Any], mlp_kwargs: Dict[str, Any], crf_kwargs: Dict[str, Any]) -> None:
         super().__init__()
         self.union_layer = UnionLayer()
         self.bilstm_layer = BiLSTMLayer(bilstm_kwargs, mlp_kwargs)
         self.crf_layer = ConditionalRandomField(**crf_kwargs)
 
-    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor) -> Tuple:
+    def forward(self, x: Tensor, x_gcn: Tensor, mask: Tensor, length: Tensor, tags: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """
 
         :param x: set of nodes, the output of encoder, (B, N, T, D)
